@@ -1,0 +1,13 @@
+@ScholarshipPortal.Api_HostAddress = http://localhost:5241
+
+#if (EnableOpenAPI)
+GET {{ScholarshipPortal.Api_HostAddress}}/openapi/v1.json
+Accept: application/json
+
+###
+#endif
+
+GET {{ScholarshipPortal.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

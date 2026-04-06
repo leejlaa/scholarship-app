@@ -1,0 +1,12 @@
+/Users/lejladoric/Desktop/Scholarship_app/backend/ScholarshipPortal.Domain/bin/Debug/net11.0/ScholarshipPortal.Domain.deps.json
+/Users/lejladoric/Desktop/Scholarship_app/backend/ScholarshipPortal.Domain/bin/Debug/net11.0/ScholarshipPortal.Domain.dll
+/Users/lejladoric/Desktop/Scholarship_app/backend/ScholarshipPortal.Domain/bin/Debug/net11.0/ScholarshipPortal.Domain.pdb
+/Users/lejladoric/Desktop/Scholarship_app/backend/ScholarshipPortal.Domain/obj/Debug/net11.0/ScholarshipPortal.Domain.GeneratedMSBuildEditorConfig.editorconfig
+/Users/lejladoric/Desktop/Scholarship_app/backend/ScholarshipPortal.Domain/obj/Debug/net11.0/ScholarshipPortal.Domain.AssemblyInfoInputs.cache
+/Users/lejladoric/Desktop/Scholarship_app/backend/ScholarshipPortal.Domain/obj/Debug/net11.0/ScholarshipPortal.Domain.AssemblyInfo.cs
+/Users/lejladoric/Desktop/Scholarship_app/backend/ScholarshipPortal.Domain/obj/Debug/net11.0/ScholarshipPortal.Domain.csproj.CoreCompileInputs.cache
+/Users/lejladoric/Desktop/Scholarship_app/backend/ScholarshipPortal.Domain/obj/Debug/net11.0/ScholarshipPortal.Domain.sourcelink.json
+/Users/lejladoric/Desktop/Scholarship_app/backend/ScholarshipPortal.Domain/obj/Debug/net11.0/ScholarshipPortal.Domain.dll
+/Users/lejladoric/Desktop/Scholarship_app/backend/ScholarshipPortal.Domain/obj/Debug/net11.0/refint/ScholarshipPortal.Domain.dll
+/Users/lejladoric/Desktop/Scholarship_app/backend/ScholarshipPortal.Domain/obj/Debug/net11.0/ScholarshipPortal.Domain.pdb
+/Users/lejladoric/Desktop/Scholarship_app/backend/ScholarshipPortal.Domain/obj/Debug/net11.0/ref/ScholarshipPortal.Domain.dll

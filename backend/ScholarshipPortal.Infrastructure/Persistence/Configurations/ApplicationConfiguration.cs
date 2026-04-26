@@ -14,6 +14,9 @@ internal sealed class ApplicationConfiguration : IEntityTypeConfiguration<Domain
             .IsRequired()
             .HasMaxLength(200);
 
+        builder.Property(a => a.UserId)
+            .HasMaxLength(450); // matches ASP.NET Identity user-id length
+
         builder.Property(a => a.Status)
             .HasConversion<string>()
             .HasMaxLength(20);

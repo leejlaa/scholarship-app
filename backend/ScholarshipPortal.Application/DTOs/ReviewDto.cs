@@ -6,5 +6,7 @@ public sealed record ReviewDto(
     string ScholarshipTitle,
     string ApplicantName,
     int RecommendedScore,
+    string ReviewerName,
+    bool IsMine,
     string Comment,
     string Stage);

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useScholarships, useApplications } from '../../application/hooks'
 import { StatusBadge, formatDate, formatMoney } from '../components/shared'
+import { usePortalSearch } from '../components/PortalLayout'
 import {
   applicationApi,
   getDocumentDownloadUrl,
@@ -39,7 +40,6 @@ interface ApplyFormProps {
 
 function ApplyForm({ scholarships, initialScholarshipId, onSave, onCancel }: ApplyFormProps) {
   const [scholarshipId, setScholarshipId] = useState<number>(initialScholarshipId ?? scholarships[0]?.id ?? 0)
-  const [studentName, setStudentName] = useState('')
   const [submit, setSubmit] = useState(true)
   const [documents, setDocuments] = useState<PendingDocumentInput[]>([
     { key: nextDocumentKey(), documentType: 'Transcript', file: null },
@@ -77,7 +77,7 @@ function ApplyForm({ scholarships, initialScholarshipId, onSave, onCancel }: App
 
     try {
       const filesToUpload = documents.filter((doc): doc is UploadDocumentInput => doc.file instanceof File)
-      await onSave({ scholarshipId, studentName: studentName || undefined, submit }, filesToUpload)
+      await onSave({ scholarshipId, submit }, filesToUpload)
     } catch (ex: unknown) {
       setErr(ex instanceof Error ? ex.message : 'Failed to create application')
     } finally {
@@ -89,10 +89,6 @@ function ApplyForm({ scholarships, initialScholarshipId, onSave, onCancel }: App
 
   return (
     <form className="crud-form" onSubmit={handleSubmit}>
-      <p className="helper-text">
-        Complete this form once to create the application and upload your supporting documents together.
-      </p>
-
       <label>Scholarship
         <select value={scholarshipId} onChange={(e) => setScholarshipId(Number(e.target.value))} required>
           {scholarships.map((s) => (
@@ -104,10 +100,6 @@ function ApplyForm({ scholarships, initialScholarshipId, onSave, onCancel }: App
       {selectedScholarship && (
         <p className="apply-inline-note">Applying for <strong>{selectedScholarship.title}</strong></p>
       )}
-
-      <label>Your name (optional — uses account name if blank)
-        <input value={studentName} onChange={(e) => setStudentName(e.target.value)} placeholder="Full name" />
-      </label>
 
       <div className="upload-form-block">
         <div className="section-heading compact">
@@ -159,10 +151,11 @@ function ApplyForm({ scholarships, initialScholarshipId, onSave, onCancel }: App
 
 interface DocumentPanelProps {
   applications: { id: number; scholarshipTitle: string }[]
+  selectedApplicationId?: number | null
   onUploaded: () => void
 }
 
-function DocumentPanel({ applications, onUploaded }: DocumentPanelProps) {
+function DocumentPanel({ applications, selectedApplicationId, onUploaded }: DocumentPanelProps) {
   const [applicationId, setApplicationId] = useState<number>(applications[0]?.id ?? 0)
   const [documentType, setDocumentType] = useState(DOCUMENT_TYPES[0])
   const [file, setFile] = useState<File | null>(null)
@@ -183,6 +176,12 @@ function DocumentPanel({ applications, onUploaded }: DocumentPanelProps) {
       setApplicationId(applications[0].id)
     }
   }, [applicationId, applications])
+
+  useEffect(() => {
+    if (selectedApplicationId && applications.some((app) => app.id === selectedApplicationId)) {
+      setApplicationId(selectedApplicationId)
+    }
+  }, [applications, selectedApplicationId])
 
   useEffect(() => {
     async function loadDocuments() {
@@ -232,14 +231,13 @@ function DocumentPanel({ applications, onUploaded }: DocumentPanelProps) {
     return (
       <div className="form-card">
         <h3>Supporting documents</h3>
-        <p className="helper-text">Create an application first, then upload your transcript, essay, and other files here.</p>
+        <p className="helper-text">No applications available.</p>
       </div>
     )
   }
 
   return (
     <div className="form-card">
-      <h3>Add more supporting documents later</h3>
       <form className="crud-form" onSubmit={handleSubmit}>
         <div className="form-row">
           <label>Application
@@ -295,6 +293,7 @@ export function StudentDashboard() {
   const [refreshKey, setRefreshKey] = useState(0)
   const scholarships = useScholarships()
   const applications = useApplications(refreshKey)
+  const { query: searchQuery } = usePortalSearch()
 
   const refresh = useCallback(() => setRefreshKey((k) => k + 1), [])
 
@@ -303,13 +302,27 @@ export function StudentDashboard() {
   const [applyNotice, setApplyNotice] = useState('')
   const [deleteId, setDeleteId] = useState<number | null>(null)
   const [deleteErr, setDeleteErr] = useState('')
+  const [selectedDocumentApplicationId, setSelectedDocumentApplicationId] = useState<number | null>(null)
   const applyFormRef = useRef<HTMLDivElement | null>(null)
+  const documentsRef = useRef<HTMLDivElement | null>(null)
 
   const summary = {
     completeDocs: (applications.data ?? []).filter((a) => a.documentsComplete).length,
     shortlisted:  (applications.data ?? []).filter((a) => a.status === 'Shortlisted').length,
     pending:      (applications.data ?? []).filter((a) => a.status !== 'Approved').length,
   }
+
+  const openScholarships = (scholarships.data ?? []).filter((s) => s.status.toLowerCase() === 'open').length
+  const totalApplications = (applications.data ?? []).length
+  const submittedApplications = (applications.data ?? []).filter((a) => a.status === 'Submitted').length
+  const normalizedQuery = searchQuery.trim().toLowerCase()
+  const filteredScholarships = (scholarships.data ?? []).filter((item) =>
+    normalizedQuery.length === 0
+    || item.title.toLowerCase().includes(normalizedQuery)
+    || item.audience.toLowerCase().includes(normalizedQuery)
+    || item.eligibility.toLowerCase().includes(normalizedQuery)
+    || item.status.toLowerCase().includes(normalizedQuery))
+  const applicationByScholarshipTitle = new Map((applications.data ?? []).map((app) => [app.scholarshipTitle, app]))
 
   useEffect(() => {
     if (!showForm) return
@@ -322,11 +335,25 @@ export function StudentDashboard() {
   function openApplyForm(scholarshipId?: number, title?: string) {
     setApplyNotice('')
     setDeleteId(null)
+    setSelectedDocumentApplicationId(null)
     setSelectedScholarship(scholarshipId && title ? { id: scholarshipId, title } : null)
     setShowForm(true)
   }
 
+  function openDocuments(applicationId: number) {
+    setDeleteId(null)
+    setShowForm(false)
+    setSelectedScholarship(null)
+    setSelectedDocumentApplicationId(applicationId)
+
+    window.requestAnimationFrame(() => {
+      documentsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
+
   async function handleCreate(req: ApplicationCreateRequest, documents: UploadDocumentInput[]) {
+    // Always create as draft first so we have an ID to attach documents to,
+    // then submit afterwards if the checkbox was ticked.
     const created = await applicationApi.create({ ...req, submit: false })
 
     for (const doc of documents) {
@@ -359,13 +386,31 @@ export function StudentDashboard() {
   }
 
   return (
-    <div className="content-grid">
+    <div className="content-grid student-dashboard">
+      <section className="student-kpi-grid">
+        <article className="student-kpi-card">
+          <p>Open scholarships</p>
+          <strong>{openScholarships}</strong>
+        </article>
+        <article className="student-kpi-card">
+          <p>Total applications</p>
+          <strong>{totalApplications}</strong>
+        </article>
+        <article className="student-kpi-card">
+          <p>Submitted</p>
+          <strong>{submittedApplications}</strong>
+        </article>
+        <article className="student-kpi-card">
+          <p>Shortlisted</p>
+          <strong>{summary.shortlisted}</strong>
+        </article>
+      </section>
+
       <section id="opportunities" className="panel">
         <div className="section-heading compact">
           <div>
             <p className="eyebrow">Scholarship posting</p>
             <h2>Available opportunities</h2>
-            <p className="helper-text">Click <strong>Apply now</strong> next to any scholarship and upload your documents in the same form.</p>
           </div>
         </div>
 
@@ -386,12 +431,17 @@ export function StudentDashboard() {
         {scholarships.loading && <p>Loading scholarships…</p>}
         {scholarships.error  && <p style={{ color: '#b91c1c' }}>{scholarships.error}</p>}
 
-        <div className="card-list">
-          {(scholarships.data ?? []).map((item) => {
+        {normalizedQuery.length > 0 && (
+          <p className="helper-text">Showing {filteredScholarships.length} result(s) for "{searchQuery}".</p>
+        )}
+
+        <div className="card-list student-opportunity-list">
+          {filteredScholarships.map((item) => {
             const isClosed = item.status.toLowerCase() === 'closed'
+            const existingApplication = applicationByScholarshipTitle.get(item.title)
 
             return (
-              <article key={item.id} className="info-card">
+              <article key={item.id} className="info-card student-opportunity-card">
                 <div className="card-topline">
                   <h3>{item.title}</h3>
                   <StatusBadge label={item.status} />
@@ -401,20 +451,36 @@ export function StudentDashboard() {
                 <p><strong>Eligibility:</strong> {item.eligibility}</p>
                 <p><strong>Award:</strong> {formatMoney(item.amount)}</p>
                 <div className="card-actions scholarship-action-row">
-                  <span className="helper-text">Prepare your transcript, essay, and supporting files before you submit.</span>
-                  <button
-                    type="button"
-                    className="btn-primary"
-                    disabled={isClosed}
-                    onClick={() => openApplyForm(item.id, item.title)}>
-                    {isClosed ? 'Closed' : 'Apply now'}
-                  </button>
+                  {existingApplication ? (
+                    <>
+                      <button type="button" className="btn-ghost" disabled>
+                        Already applied
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        onClick={() => openDocuments(existingApplication.id)}>
+                        Edit documents
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      disabled={isClosed}
+                      onClick={() => openApplyForm(item.id, item.title)}>
+                      {isClosed ? 'Closed' : 'Apply now'}
+                    </button>
+                  )}
                 </div>
               </article>
             )
           })}
         </div>
 
+        {!scholarships.loading && filteredScholarships.length === 0 && (
+          <p className="helper-text">No scholarships match your search.</p>
+        )}
       </section>
 
       <section id="applications" className="panel">
@@ -426,9 +492,9 @@ export function StudentDashboard() {
         </div>
 
         <div className="mini-stats">
-          <div><strong>{summary.completeDocs}</strong><span>Complete document sets</span></div>
-          <div><strong>{summary.shortlisted}</strong><span>Shortlisted</span></div>
-          <div><strong>{summary.pending}</strong><span>In progress</span></div>
+          <div className="stat"><p className="label">Complete sets</p><p className="value">{summary.completeDocs}</p></div>
+          <div className="stat"><p className="label">Shortlisted</p><p className="value">{summary.shortlisted}</p></div>
+          <div className="stat"><p className="label">In progress</p><p className="value">{summary.pending}</p></div>
         </div>
 
         {applications.loading && <p>Loading applications…</p>}
@@ -464,6 +530,9 @@ export function StudentDashboard() {
                   <td>{item.submittedDocuments || (item.documentsComplete ? 'Uploaded' : 'Missing items')}</td>
                   <td>{item.nextStep}</td>
                   <td>
+                    <button type="button" className="btn-ghost btn-sm" onClick={() => openDocuments(item.id)}>
+                      Edit documents
+                    </button>
                     <button type="button" className="btn-danger btn-sm" onClick={() => { setDeleteId(item.id); setShowForm(false) }}>
                       Withdraw
                     </button>
@@ -474,9 +543,10 @@ export function StudentDashboard() {
           </table>
         </div>
 
-        <div id="documents">
+        <div id="documents" ref={documentsRef}>
           <DocumentPanel
             applications={(applications.data ?? []).map((app) => ({ id: app.id, scholarshipTitle: app.scholarshipTitle }))}
+            selectedApplicationId={selectedDocumentApplicationId}
             onUploaded={refresh}
           />
         </div>

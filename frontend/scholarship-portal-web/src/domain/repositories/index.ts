@@ -22,6 +22,7 @@ export interface ScholarshipWriteRequest {
   deadline: string   // ISO date string e.g. "2025-12-31"
   eligibility: string
   amount: number
+  reviewerId?: string
 }
 
 export interface ApplicationCreateRequest {

@@ -1,0 +1,20 @@
+# .NET build output
+**/bin/
+**/obj/
+
+# Frontend build output and dependencies
+frontend/scholarship-portal-web/dist/
+frontend/scholarship-portal-web/node_modules/
+
+# Local databases
+*.db
+*.db-shm
+*.db-wal
+
+# Local uploads
+backend/ScholarshipPortal.Api/uploads/*
+!backend/ScholarshipPortal.Api/uploads/.gitkeep
+
+# Logs / OS files
+.DS_Store
+*.log

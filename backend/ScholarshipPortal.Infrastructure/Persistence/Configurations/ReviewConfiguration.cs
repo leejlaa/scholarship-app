@@ -14,6 +14,9 @@ internal sealed class ReviewConfiguration : IEntityTypeConfiguration<Review>
             .IsRequired()
             .HasMaxLength(200);
 
+        builder.Property(r => r.ReviewerId)
+            .HasMaxLength(450);
+
         builder.Property(r => r.Comment)
             .IsRequired()
             .HasMaxLength(2000);

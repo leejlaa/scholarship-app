@@ -6,7 +6,4 @@ namespace ScholarshipPortal.Infrastructure.Identity;
 public sealed class AppUser : IdentityUser
 {
     public string FullName { get; set; } = string.Empty;
-
-    /// <summary>Application role: "Student" | "Reviewer" | "Admin"</summary>
-    public string Role { get; set; } = "Student";
 }

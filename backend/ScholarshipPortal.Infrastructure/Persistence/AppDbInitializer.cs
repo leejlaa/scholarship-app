@@ -10,14 +10,18 @@ namespace ScholarshipPortal.Infrastructure.Persistence;
 
 public static class AppDbInitializer
 {
+    private static readonly string[] Roles = ["Student", "Reviewer", "Admin"];
+
     public static async Task SeedAsync(IServiceProvider services)
     {
         using var scope = services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var db          = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var userManager = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<AppRole>>();
 
         await db.Database.MigrateAsync();
 
+        await SeedRolesAsync(roleManager);
         await SeedUsersAsync(userManager);
         await SeedScholarshipsAsync(db);
         await SeedApplicationsAsync(db);
@@ -25,24 +29,70 @@ public static class AppDbInitializer
         await SeedAnnouncementsAsync(db);
     }
 
+    // ── Ensure Student / Reviewer / Admin rows exist in AspNetRoles ───────
+    private static async Task SeedRolesAsync(RoleManager<AppRole> roleManager)
+    {
+        foreach (var role in Roles)
+        {
+            if (!await roleManager.RoleExistsAsync(role))
+                await roleManager.CreateAsync(new AppRole(role));
+        }
+    }
+
     private static async Task SeedUsersAsync(UserManager<AppUser> userManager)
     {
-        var users = new[]
+        var seeds = new[]
         {
-            new AppUser { UserName = "student@scholarship.local",  Email = "student@scholarship.local",  FullName = "Amina Yusuf",   Role = "Student" },
-            new AppUser { UserName = "reviewer@scholarship.local", Email = "reviewer@scholarship.local", FullName = "Dr. Elena Kovač", Role = "Reviewer" },
-            new AppUser { UserName = "admin@scholarship.local",    Email = "admin@scholarship.local",    FullName = "Portal Admin",   Role = "Admin" }
+            (Email: "student@scholarship.local",  FullName: "Amina Yusuf",     Role: "Student"),
+            (Email: "reviewer@scholarship.local", FullName: "Dr. Elena Kovač", Role: "Reviewer"),
+            (Email: "admin@scholarship.local",    FullName: "Portal Admin",    Role: "Admin")
         };
 
-        foreach (var user in users)
+        foreach (var (email, fullName, role) in seeds)
         {
-            if (await userManager.FindByEmailAsync(user.Email!) is null)
+            var user = await userManager.FindByEmailAsync(email);
+
+            if (user is null)
             {
+                user = new AppUser { UserName = email, Email = email, FullName = fullName };
+
                 var result = await userManager.CreateAsync(user, "Password123");
                 if (!result.Succeeded)
                 {
                     var errors = string.Join("; ", result.Errors.Select(e => e.Description));
-                    throw new InvalidOperationException($"Failed to seed user {user.Email}: {errors}");
+                    throw new InvalidOperationException($"Failed to seed user {email}: {errors}");
+                }
+            }
+            else if (!string.Equals(user.FullName, fullName, StringComparison.Ordinal))
+            {
+                user.FullName = fullName;
+                var updateResult = await userManager.UpdateAsync(user);
+                if (!updateResult.Succeeded)
+                {
+                    var errors = string.Join("; ", updateResult.Errors.Select(e => e.Description));
+                    throw new InvalidOperationException($"Failed to update seeded user {email}: {errors}");
+                }
+            }
+
+            var currentRoles = await userManager.GetRolesAsync(user);
+            var rolesToRemove = currentRoles.Where(r => !r.Equals(role, StringComparison.OrdinalIgnoreCase)).ToArray();
+            if (rolesToRemove.Length > 0)
+            {
+                var removeResult = await userManager.RemoveFromRolesAsync(user, rolesToRemove);
+                if (!removeResult.Succeeded)
+                {
+                    var errors = string.Join("; ", removeResult.Errors.Select(e => e.Description));
+                    throw new InvalidOperationException($"Failed to normalize roles for {email}: {errors}");
+                }
+            }
+
+            if (!currentRoles.Any(r => r.Equals(role, StringComparison.OrdinalIgnoreCase)))
+            {
+                var addRoleResult = await userManager.AddToRoleAsync(user, role);
+                if (!addRoleResult.Succeeded)
+                {
+                    var errors = string.Join("; ", addRoleResult.Errors.Select(e => e.Description));
+                    throw new InvalidOperationException($"Failed to assign role '{role}' to {email}: {errors}");
                 }
             }
         }
@@ -68,7 +118,11 @@ public static class AppDbInitializer
         var scholarships = await db.Scholarships.OrderBy(s => s.Id).ToListAsync();
         if (scholarships.Count < 3) return;
 
-        var a1 = DomainApp.Create(scholarships[0].Id, "Amina Yusuf");
+        // Resolve the Identity user IDs so applications are linked to real accounts
+        var studentUser   = await db.Users.FirstOrDefaultAsync(u => u.Email == "student@scholarship.local");
+        var studentUserId = studentUser?.Id;
+
+        var a1 = DomainApp.Create(scholarships[0].Id, "Amina Yusuf", studentUserId);
         a1.Submit();
         a1.MarkUnderReview();
 

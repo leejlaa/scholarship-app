@@ -1,27 +1,34 @@
-import type { ReactNode } from 'react'
-import { ClipboardCheck, Compass, LayoutDashboard, LogOut, Megaphone, ShieldCheck, Upload, Workflow } from 'lucide-react'
+import { createContext, useContext, useState, type ReactNode } from 'react'
+import { Bell, ClipboardCheck, Compass, LayoutDashboard, LogOut, Search, Upload } from 'lucide-react'
 import { NavLink, Navigate } from 'react-router-dom'
 import { usePortalOverview } from '../../application/hooks'
 import type { AuthResponse } from '../../domain/entities'
 import { cn } from '../../lib/utils'
-import { StatCard, StatusBadge } from './shared'
+import { StatCard } from './shared'
 import { Button } from './ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 
 export type Role = 'student' | 'reviewer' | 'admin'
 
-const ROLE_SUMMARY: Record<Role, { title: string; description: string }> = {
+type PortalSearchContextValue = {
+  query: string
+}
+
+const PortalSearchContext = createContext<PortalSearchContextValue>({ query: '' })
+
+export function usePortalSearch() {
+  return useContext(PortalSearchContext)
+}
+
+const ROLE_SUMMARY: Record<Role, { title: string }> = {
   student: {
     title: 'Student portal',
-    description: 'Browse scholarships, submit applications, and upload supporting documents.',
   },
   reviewer: {
     title: 'Reviewer workspace',
-    description: 'Review student applications, score submissions, and post evaluation comments.',
   },
   admin: {
     title: 'Admin control center',
-    description: 'Create scholarship postings, monitor activity, and manage platform operations.',
   },
 }
 
@@ -33,30 +40,9 @@ const ROLE_SECTIONS: Record<Role, Array<{ label: string; href: string; icon: typ
   ],
   reviewer: [
     { label: 'Review queue', href: '#queue', icon: ClipboardCheck },
-    { label: 'Review rubric', href: '#rubric', icon: ShieldCheck },
   ],
   admin: [
     { label: 'Scholarship management', href: '#scholarships', icon: LayoutDashboard },
-    { label: 'Announcements', href: '#announcements', icon: Megaphone },
-    { label: 'Workflow', href: '#workflow', icon: Workflow },
-  ],
-}
-
-const ROLE_FOCUS: Record<Role, string[]> = {
-  student: [
-    'Find the right scholarship quickly',
-    'Track submissions and next steps',
-    'Upload supporting documents securely',
-  ],
-  reviewer: [
-    'Work through the pending queue',
-    'Add clear, evidence-based comments',
-    'Move applications through review stages',
-  ],
-  admin: [
-    'Publish and update scholarship postings',
-    'Monitor announcement activity',
-    'Keep the full review workflow moving',
   ],
 }
 
@@ -98,23 +84,30 @@ interface PortalLayoutProps {
 export function PortalLayout({ auth, activeRole, onLogout, children }: PortalLayoutProps) {
   const overview = usePortalOverview(true)
   const currentRole = normaliseRole(auth.role)
+  const [searchQuery, setSearchQuery] = useState('')
+  const initials = auth.fullName
+    .split(' ')
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase()
 
   return (
-    <div className="app-shell portal-shell">
-      <div className="dashboard-shell">
+    <PortalSearchContext.Provider value={{ query: searchQuery }}>
+      <div className="app-shell portal-shell">
+        <div className="dashboard-shell">
         <Card className="sidebar">
           <CardHeader className="sidebar-header-block">
             <div className="sidebar-header">
-              <div className="brand-mark">SP</div>
-              <div>
-                <CardTitle className="sidebar-brand-title">Scholarship Portal</CardTitle>
-                <CardDescription>{ROLE_SUMMARY[activeRole].title}</CardDescription>
+              <div className="brand-mark">
+                <img src="/ius-logo.png" alt="IUS logo" className="brand-logo-img" />
               </div>
-            </div>
-
-            <div className="sidebar-chip-row">
-              <StatusBadge label={auth.role} variant="pill" />
-              <span className="sidebar-subtle-pill">Secure session</span>
+              <div>
+                <CardTitle className="sidebar-brand-title">Scholaship application</CardTitle>
+                <p className="sidebar-subtitle">International University of Sarajevo</p>
+                <p className="sidebar-meta">{ROLE_SUMMARY[activeRole].title}</p>
+              </div>
             </div>
           </CardHeader>
 
@@ -135,43 +128,46 @@ export function PortalLayout({ auth, activeRole, onLogout, children }: PortalLay
                 )
               })}
             </div>
-
-            <div className="sidebar-card sidebar-card-elevated">
-              <p className="sidebar-title">Quick focus</p>
-              <ul className="sidebar-list">
-                {ROLE_FOCUS[activeRole].map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="sidebar-card">
-              <p className="sidebar-title">Signed in</p>
-              <p className="sidebar-meta"><strong>{auth.fullName}</strong></p>
-              <p className="sidebar-meta">{auth.email}</p>
-              <p className="sidebar-meta">Expires {new Date(auth.expiresAt).toLocaleString()}</p>
-            </div>
           </CardContent>
         </Card>
 
         <div className="main-column">
           <Card className="top-nav top-nav-card">
             <CardContent className="top-nav-content">
-              <div>
-                <p className="eyebrow">Role dashboard</p>
-                <h1 className="page-title">{ROLE_SUMMARY[activeRole].title}</h1>
-                <p className="lead">{ROLE_SUMMARY[activeRole].description}</p>
+              <div className="top-nav-main">
+                <h1 className="page-title">Dashboard</h1>
+                <p className="page-subtitle">{ROLE_SUMMARY[activeRole].title}</p>
               </div>
 
-              <div className="nav-user nav-user-card">
-                <div>
-                  <strong>{auth.fullName}</strong>
-                  <p>{auth.email}</p>
+              <div className="top-nav-toolbar">
+                <label className="top-nav-search" aria-label="Search">
+                  <Search size={16} />
+                  <input
+                    type="text"
+                    placeholder="Search scholarships, applications..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </label>
+
+                <div className="nav-user nav-user-card">
+                  <button type="button" className="nav-icon-button" aria-label="Notifications">
+                    <Bell size={16} />
+                    <span className="nav-dot" />
+                  </button>
+
+                  <div className="nav-avatar">{initials || 'IU'}</div>
+
+                  <div className="nav-user-meta">
+                    <strong>{auth.fullName}</strong>
+                    <p>{auth.email}</p>
+                  </div>
+
+                  <Button type="button" className="logout-button" onClick={onLogout}>
+                    <LogOut size={16} />
+                    <span>Log out</span>
+                  </Button>
                 </div>
-                <Button type="button" className="logout-button" onClick={onLogout}>
-                  <LogOut size={16} />
-                  <span>Log out</span>
-                </Button>
               </div>
             </CardContent>
           </Card>
@@ -183,36 +179,10 @@ export function PortalLayout({ auth, activeRole, onLogout, children }: PortalLay
             <StatCard label="Published results" value={overview.data?.publishedResults ?? '—'} />
           </section>
 
-          <section className="hero-panel hero-panel-compact">
-            <div>
-              <p className="eyebrow">Professional workspace</p>
-              <h2>Everything you need is organised in one place</h2>
-              <p className="lead">Use the side panel to jump between your most important tasks without losing context.</p>
-              <div className="pill-row">
-                <span className={`status-pill ${overview.loading ? 'neutral' : overview.error ? 'closes-soon' : 'success'}`}>
-                  {overview.loading ? 'Loading secured data…' : overview.error ? 'Protected API returned an error' : 'JWT authenticated'}
-                </span>
-                <span className="status-pill neutral">Access restricted to {activeRole}s</span>
-              </div>
-            </div>
-
-            <Card className="roadmap-card roadmap-card-shell">
-              <CardHeader>
-                <CardTitle>Today’s focus</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="sidebar-list light-list">
-                  {ROLE_FOCUS[activeRole].map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          </section>
-
           <main className="page-content">{children}</main>
         </div>
       </div>
-    </div>
+      </div>
+    </PortalSearchContext.Provider>
   )
 }

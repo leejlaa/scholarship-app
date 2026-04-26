@@ -7,4 +7,7 @@ public sealed record ScholarshipDto(
     string Deadline,
     string Eligibility,
     decimal Amount,
-    string Status);
+    string Status,
+    string? AssignedReviewerId,
+    string? AssignedReviewerName,
+    string? AssignedReviewerEmail);

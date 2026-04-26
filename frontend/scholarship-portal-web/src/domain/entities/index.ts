@@ -8,6 +8,15 @@ export interface Scholarship {
   eligibility: string
   amount: number
   status: string
+  assignedReviewerId?: string | null
+  assignedReviewerName?: string | null
+  assignedReviewerEmail?: string | null
+}
+
+export interface ReviewerSummary {
+  id: string
+  fullName: string
+  email: string
 }
 
 export interface StudentApplication {
@@ -27,6 +36,8 @@ export interface Review {
   scholarshipTitle: string
   applicantName: string
   recommendedScore: number
+  reviewerName: string
+  isMine: boolean
   comment: string
   stage: string
 }

@@ -30,6 +30,15 @@ internal sealed class ScholarshipConfiguration : IEntityTypeConfiguration<Schola
             .HasConversion<string>()
             .HasMaxLength(20);
 
+        builder.Property(s => s.AssignedReviewerId)
+            .HasMaxLength(450);
+
+        builder.Property(s => s.AssignedReviewerName)
+            .HasMaxLength(200);
+
+        builder.Property(s => s.AssignedReviewerEmail)
+            .HasMaxLength(256);
+
         // SQLite stores DateOnly as text
         builder.Property(s => s.Deadline)
             .HasConversion(

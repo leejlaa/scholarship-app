@@ -8,7 +8,7 @@ using DomainApp = ScholarshipPortal.Domain.Entities.Application;
 namespace ScholarshipPortal.Infrastructure.Persistence;
 
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
-    : IdentityDbContext<AppUser>(options)
+    : IdentityDbContext<AppUser, AppRole, string>(options)
 {
     public DbSet<Scholarship>        Scholarships        => Set<Scholarship>();
     public DbSet<DomainApp>          Applications        => Set<DomainApp>();

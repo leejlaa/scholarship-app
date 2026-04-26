@@ -27,6 +27,14 @@ public sealed class InMemoryApplicationRepository : IApplicationRepository
     public Task<IReadOnlyList<DomainApp>> GetAllAsync(CancellationToken ct = default)
         => Task.FromResult<IReadOnlyList<DomainApp>>(_store.AsReadOnly());
 
+    public Task<IReadOnlyList<DomainApp>> GetByUserIdAsync(string userId, CancellationToken ct = default)
+        => Task.FromResult<IReadOnlyList<DomainApp>>(
+            _store.Where(a => a.UserId == userId).ToList().AsReadOnly());
+
+    public Task<IReadOnlyList<DomainApp>> GetByScholarshipIdAsync(int scholarshipId, CancellationToken ct = default)
+        => Task.FromResult<IReadOnlyList<DomainApp>>(
+            _store.Where(a => a.ScholarshipId == scholarshipId).ToList().AsReadOnly());
+
     public Task<DomainApp?> GetByIdAsync(int id, CancellationToken ct = default)
         => Task.FromResult(_store.FirstOrDefault(a => a.Id == id));
 

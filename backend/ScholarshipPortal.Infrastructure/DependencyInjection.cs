@@ -3,12 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using ScholarshipPortal.Application.Services;
-using ScholarshipPortal.Application.UseCases.Announcements;
-using ScholarshipPortal.Application.UseCases.Applications;
-using ScholarshipPortal.Application.UseCases.Auth;
-using ScholarshipPortal.Application.UseCases.Overview;
-using ScholarshipPortal.Application.UseCases.Reviews;
-using ScholarshipPortal.Application.UseCases.Scholarships;
 using ScholarshipPortal.Domain.Repositories;
 using ScholarshipPortal.Infrastructure.Auth;
 using ScholarshipPortal.Infrastructure.Identity;
@@ -40,29 +34,29 @@ public static class DependencyInjection
                 opts.Password.RequireNonAlphanumeric = false;
                 opts.Password.RequiredLength         = 8;
             })
+            .AddRoles<AppRole>()
             .AddEntityFrameworkStores<AppDbContext>()
             .AddDefaultTokenProviders();
 
         // ── Repositories (Scoped — one per HTTP request) ──────────────────
         services.AddScoped<IScholarshipRepository,  EfScholarshipRepository>();
         services.AddScoped<IApplicationRepository,  EfApplicationRepository>();
+        services.AddScoped<IApplicationDocumentRepository, EfApplicationDocumentRepository>();
         services.AddScoped<IReviewRepository,       EfReviewRepository>();
         services.AddScoped<IAnnouncementRepository, EfAnnouncementRepository>();
 
-        // ── Auth service ─────────────────────────────────────────────────
-        services.AddScoped<IAuthService, JwtTokenService>();
+        // ── Services ──────────────────────────────────────────────────────
+        services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
+        services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IScholarshipService, ScholarshipService>();
+        services.AddScoped<IApplicationService, ApplicationService>();
+        services.AddScoped<IReviewService, ReviewService>();
+        services.AddScoped<IDocumentService, DocumentService>();
+        services.AddScoped<IAnnouncementService, AnnouncementService>();
+        services.AddScoped<IOverviewService, OverviewService>();
 
         // ── Storage ───────────────────────────────────────────────────────
         services.AddSingleton<IDocumentStorageService>(_ => new LocalDocumentStorageService(uploadRoot));
-
-        // ── Use cases ─────────────────────────────────────────────────────
-        services.AddScoped<GetScholarshipsQuery>();
-        services.AddScoped<GetApplicationsQuery>();
-        services.AddScoped<GetReviewQueueQuery>();
-        services.AddScoped<GetAnnouncementsQuery>();
-        services.AddScoped<GetPortalOverviewQuery>();
-        services.AddScoped<RegisterCommand>();
-        services.AddScoped<LoginCommand>();
 
         return services;
     }

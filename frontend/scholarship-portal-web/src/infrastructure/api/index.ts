@@ -12,6 +12,7 @@ import type {
   RegisterRequest,
   AuthResponse,
   ApplicationDocumentSummary,
+  ReviewerSummary,
 } from '../../domain/entities'
 import type {
   IScholarshipRepository,
@@ -182,4 +183,12 @@ export const workflowApi: IWorkflowRepository = {
 export const authApi: IAuthRepository = {
   login: (request: LoginRequest) => apiPost<AuthResponse, LoginRequest>('/api/auth/login', request),
   register: (request: RegisterRequest) => apiPost<AuthResponse, RegisterRequest>('/api/auth/register', request),
+}
+
+export function listReviewers() {
+  return apiGet<ReviewerSummary[]>('/api/auth/reviewers')
+}
+
+export function assignScholarshipReviewer(scholarshipId: number, reviewerId: string | null) {
+  return apiPut<Scholarship, { reviewerId: string | null }>(`/api/scholarships/${scholarshipId}/reviewer`, { reviewerId })
 }

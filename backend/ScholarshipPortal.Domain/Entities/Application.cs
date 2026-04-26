@@ -9,20 +9,25 @@ public sealed class Application
     public int Id { get; private set; }
     public int ScholarshipId { get; private set; }
     public string StudentName { get; private set; } = string.Empty;
+
+    /// <summary>Identity user ID of the student who owns this application.</summary>
+    public string? UserId { get; private set; }
+
     public ApplicationStatus Status { get; private set; }
     public IReadOnlyList<ApplicationDocument> Documents => _documents.AsReadOnly();
 
     private Application() { }
 
-    public static Application Create(int scholarshipId, string studentName)
+    public static Application Create(int scholarshipId, string studentName, string? userId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(studentName);
 
         return new Application
         {
             ScholarshipId = scholarshipId,
-            StudentName = studentName,
-            Status = ApplicationStatus.Draft
+            StudentName   = studentName,
+            UserId        = userId,
+            Status        = ApplicationStatus.Draft
         };
     }
 

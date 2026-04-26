@@ -11,6 +11,9 @@ public sealed class Scholarship
     public string Eligibility { get; private set; } = string.Empty;
     public decimal Amount { get; private set; }
     public ScholarshipStatus Status { get; private set; }
+    public string? AssignedReviewerId { get; private set; }
+    public string? AssignedReviewerName { get; private set; }
+    public string? AssignedReviewerEmail { get; private set; }
 
     private Scholarship() { }
 
@@ -62,4 +65,21 @@ public sealed class Scholarship
     }
 
     public bool IsOpen() => Status == ScholarshipStatus.Open;
+
+    public void AssignReviewer(string reviewerId, string reviewerName, string? reviewerEmail)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(reviewerId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(reviewerName);
+
+        AssignedReviewerId = reviewerId;
+        AssignedReviewerName = reviewerName;
+        AssignedReviewerEmail = reviewerEmail;
+    }
+
+    public void UnassignReviewer()
+    {
+        AssignedReviewerId = null;
+        AssignedReviewerName = null;
+        AssignedReviewerEmail = null;
+    }
 }

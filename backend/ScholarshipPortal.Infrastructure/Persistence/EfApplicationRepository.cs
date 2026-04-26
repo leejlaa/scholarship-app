@@ -13,6 +13,19 @@ internal sealed class EfApplicationRepository(AppDbContext db) : IApplicationRep
             .AsNoTracking()
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyList<DomainApp>> GetByUserIdAsync(string userId, CancellationToken ct = default)
+        => await db.Applications
+            .Where(a => a.UserId == userId)
+            .Include(a => a.Documents)
+            .AsNoTracking()
+            .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<DomainApp>> GetByScholarshipIdAsync(int scholarshipId, CancellationToken ct = default)
+        => await db.Applications
+            .Where(a => a.ScholarshipId == scholarshipId)
+            .Include(a => a.Documents)
+            .ToListAsync(ct);
+
     public async Task<DomainApp?> GetByIdAsync(int id, CancellationToken ct = default)
         => await db.Applications
             .Include(a => a.Documents)

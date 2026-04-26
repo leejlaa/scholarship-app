@@ -3,7 +3,7 @@
   line-height: 1.5;
   font-weight: 400;
   color: #0f172a;
-  background: linear-gradient(180deg, #eff6ff 0%, #f8fafc 100%);
+  background: #f5f7fb;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -17,6 +17,7 @@ html {
 body {
   margin: 0;
   min-width: 320px;
+  background: #f5f7fb;
 }
 
 #root {

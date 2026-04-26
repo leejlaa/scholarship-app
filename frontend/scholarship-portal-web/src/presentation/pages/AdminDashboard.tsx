@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react'
-import { useAnnouncements, useWorkflow, useScholarships } from '../../application/hooks'
+import { useState, useCallback, useEffect } from 'react'
+import { useScholarships } from '../../application/hooks'
 import { formatDate, formatMoney, StatusBadge } from '../components/shared'
-import { scholarshipApi } from '../../infrastructure/api'
+import { usePortalSearch } from '../components/PortalLayout'
+import { assignScholarshipReviewer, listReviewers, scholarshipApi } from '../../infrastructure/api'
 import type { ScholarshipWriteRequest } from '../../domain/repositories'
-import type { Scholarship } from '../../domain/entities'
+import type { ReviewerSummary, Scholarship } from '../../domain/entities'
 
 // ── Scholarship form ──────────────────────────────────────────────────────
 
@@ -17,12 +18,14 @@ const EMPTY_FORM: ScholarshipWriteRequest = {
 
 interface ScholarshipFormProps {
   initial?: ScholarshipWriteRequest
+  reviewers: ReviewerSummary[]
+  requireReviewer: boolean
   onSave: (req: ScholarshipWriteRequest) => Promise<void>
   onCancel: () => void
   submitLabel: string
 }
 
-function ScholarshipForm({ initial = EMPTY_FORM, onSave, onCancel, submitLabel }: ScholarshipFormProps) {
+function ScholarshipForm({ initial = EMPTY_FORM, reviewers, requireReviewer, onSave, onCancel, submitLabel }: ScholarshipFormProps) {
   const [form, setForm] = useState<ScholarshipWriteRequest>(initial)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
@@ -36,6 +39,12 @@ function ScholarshipForm({ initial = EMPTY_FORM, onSave, onCancel, submitLabel }
     setBusy(true)
     setErr('')
     try {
+      if (requireReviewer && !form.reviewerId) {
+        setErr('Reviewer is required.')
+        setBusy(false)
+        return
+      }
+
       await onSave(form)
     } catch (ex: unknown) {
       setErr(ex instanceof Error ? ex.message : 'Save failed')
@@ -63,6 +72,14 @@ function ScholarshipForm({ initial = EMPTY_FORM, onSave, onCancel, submitLabel }
             onChange={(e) => set('amount', parseFloat(e.target.value) || 0)} required />
         </label>
       </div>
+      <label>Assigned reviewer
+        <select value={form.reviewerId ?? ''} onChange={(e) => set('reviewerId', e.target.value)} required={requireReviewer}>
+          <option value="">Select reviewer</option>
+          {reviewers.map((reviewer) => (
+            <option key={reviewer.id} value={reviewer.id}>{reviewer.fullName} ({reviewer.email})</option>
+          ))}
+        </select>
+      </label>
       <label>Eligibility criteria
         <textarea rows={2} value={form.eligibility} onChange={(e) => set('eligibility', e.target.value)} required />
       </label>
@@ -78,8 +95,6 @@ function ScholarshipForm({ initial = EMPTY_FORM, onSave, onCancel, submitLabel }
 // ── Main dashboard ─────────────────────────────────────────────────────────
 
 export function AdminDashboard() {
-  const announcements = useAnnouncements()
-  const workflow      = useWorkflow()
   const [refreshKey, setRefreshKey] = useState(0)
   const scholarships  = useScholarships(refreshKey)
 
@@ -89,6 +104,22 @@ export function AdminDashboard() {
   const [editing, setEditing] = useState<null | 'new' | Scholarship>(null)
   const [deleteId, setDeleteId] = useState<number | null>(null)
   const [deleteErr, setDeleteErr] = useState('')
+  const [reviewers, setReviewers] = useState<ReviewerSummary[]>([])
+  const [reviewerByScholarship, setReviewerByScholarship] = useState<Record<number, string>>({})
+  const [assigningScholarshipId, setAssigningScholarshipId] = useState<number | null>(null)
+  const [assignErr, setAssignErr] = useState('')
+
+  useEffect(() => {
+    async function loadReviewers() {
+      try {
+        setReviewers(await listReviewers())
+      } catch {
+        setReviewers([])
+      }
+    }
+
+    void loadReviewers()
+  }, [])
 
   // ── handlers ──────────────────────────────────────────────────────────
 
@@ -116,6 +147,21 @@ export function AdminDashboard() {
     }
   }
 
+  async function handleAssignReviewer(scholarship: Scholarship) {
+    setAssignErr('')
+    setAssigningScholarshipId(scholarship.id)
+
+    try {
+      const selected = reviewerByScholarship[scholarship.id]
+      await assignScholarshipReviewer(scholarship.id, selected ? selected : null)
+      refresh()
+    } catch (ex: unknown) {
+      setAssignErr(ex instanceof Error ? ex.message : 'Reviewer assignment failed')
+    } finally {
+      setAssigningScholarshipId(null)
+    }
+  }
+
   function toWriteRequest(s: Scholarship): ScholarshipWriteRequest {
     return {
       title: s.title,
@@ -123,17 +169,40 @@ export function AdminDashboard() {
       deadline: s.deadline,
       eligibility: s.eligibility,
       amount: s.amount,
+      reviewerId: s.assignedReviewerId ?? undefined,
     }
   }
 
+  const { query: searchQuery } = usePortalSearch()
+  const normalizedQuery = searchQuery.trim().toLowerCase()
+
+  const filteredScholarships = (scholarships.data ?? []).filter((s) =>
+    normalizedQuery.length === 0
+    || s.title.toLowerCase().includes(normalizedQuery)
+    || s.audience.toLowerCase().includes(normalizedQuery)
+    || s.eligibility.toLowerCase().includes(normalizedQuery)
+    || s.status.toLowerCase().includes(normalizedQuery)
+    || (s.assignedReviewerName ?? '').toLowerCase().includes(normalizedQuery))
+
+  const openScholarships = (scholarships.data ?? []).filter((s) => s.status.toLowerCase() === 'open').length
+
   return (
-    <div className="content-grid">
+    <div className="content-grid admin-dashboard">
+      <section className="admin-kpi-grid">
+        <article className="admin-kpi-card">
+          <p>Open scholarships</p>
+          <strong>{openScholarships}</strong>
+        </article>
+        <article className="admin-kpi-card">
+          <p>Total scholarships</p>
+          <strong>{scholarships.data?.length ?? 0}</strong>
+        </article>
+      </section>
 
       {/* ── Scholarship management ── */}
       <section id="scholarships" className="panel">
         <div className="section-heading compact">
           <div>
-            <p className="eyebrow">Admin tools</p>
             <h2>Scholarship management</h2>
           </div>
           <button type="button" className="btn-primary" onClick={() => setEditing('new')}>
@@ -145,18 +214,35 @@ export function AdminDashboard() {
         {editing === 'new' && (
           <div className="form-card">
             <h3>Create scholarship</h3>
-            <ScholarshipForm onSave={handleCreate} onCancel={() => setEditing(null)} submitLabel="Create" />
+            <ScholarshipForm
+              reviewers={reviewers}
+              requireReviewer
+              onSave={handleCreate}
+              onCancel={() => setEditing(null)}
+              submitLabel="Create"
+            />
           </div>
         )}
         {editing && editing !== 'new' && (
           <div className="form-card">
             <h3>Edit — {editing.title}</h3>
-            <ScholarshipForm initial={toWriteRequest(editing)} onSave={handleUpdate} onCancel={() => setEditing(null)} submitLabel="Save changes" />
+            <ScholarshipForm
+              initial={toWriteRequest(editing)}
+              reviewers={reviewers}
+              requireReviewer={false}
+              onSave={handleUpdate}
+              onCancel={() => setEditing(null)}
+              submitLabel="Save changes"
+            />
           </div>
         )}
 
         {scholarships.loading && <p>Loading scholarships…</p>}
         {scholarships.error   && <p style={{ color: '#b91c1c' }}>{scholarships.error}</p>}
+
+        {normalizedQuery.length > 0 && (
+          <p className="helper-text">Showing {filteredScholarships.length} scholarship(s) for "{searchQuery}".</p>
+        )}
 
         {/* Confirm delete */}
         {deleteId !== null && (
@@ -170,9 +256,12 @@ export function AdminDashboard() {
           </div>
         )}
 
-        <div className="card-list">
-          {(scholarships.data ?? []).map((item) => (
-            <article key={item.id} className="info-card">
+        <div className="card-list admin-scholarship-list">
+          {filteredScholarships.length === 0 && !scholarships.loading && (
+            <p className="helper-text">No scholarships match your search.</p>
+          )}
+          {filteredScholarships.map((item) => (
+            <article key={item.id} className="info-card admin-scholarship-card">
               <div className="card-topline">
                 <h3>{item.title}</h3>
                 <StatusBadge label={item.status} />
@@ -180,64 +269,35 @@ export function AdminDashboard() {
               <p>{item.audience}</p>
               <p><strong>Deadline:</strong> {formatDate(item.deadline)} · <strong>Award:</strong> {formatMoney(item.amount)}</p>
               <p><em>{item.eligibility}</em></p>
+              <p><strong>Assigned reviewer:</strong> {item.assignedReviewerName ?? 'Unassigned'}</p>
+              <div className="status-update-row">
+                <label className="status-update-label">Reviewer</label>
+                <div className="status-update-controls">
+                  <select
+                    value={reviewerByScholarship[item.id] ?? item.assignedReviewerId ?? ''}
+                    onChange={(e) => setReviewerByScholarship((prev) => ({ ...prev, [item.id]: e.target.value }))}>
+                    <option value="">Unassigned</option>
+                    {reviewers.map((reviewer) => (
+                      <option key={reviewer.id} value={reviewer.id}>{reviewer.fullName} ({reviewer.email})</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn-primary btn-sm"
+                    disabled={assigningScholarshipId === item.id}
+                    onClick={() => void handleAssignReviewer(item)}>
+                    {assigningScholarshipId === item.id ? 'Assigning…' : 'Assign reviewer'}
+                  </button>
+                </div>
+              </div>
               <div className="card-actions">
                 <button type="button" className="btn-ghost btn-sm"
                   onClick={() => { setEditing(item); setDeleteId(null) }}>Edit</button>
                 <button type="button" className="btn-danger btn-sm"
                   onClick={() => { setDeleteId(item.id); setEditing(null) }}>Delete</button>
               </div>
+              {assignErr && <p className="form-error">{assignErr}</p>}
             </article>
-          ))}
-        </div>
-      </section>
-
-      {/* ── Announcements ── */}
-      <section id="announcements" className="panel">
-        <div className="section-heading compact">
-          <div>
-            <p className="eyebrow">Announcements and results</p>
-            <h2>Admin updates</h2>
-          </div>
-        </div>
-
-        {announcements.loading && <p>Loading announcements…</p>}
-        {announcements.error   && <p style={{ color: '#b91c1c' }}>{announcements.error}</p>}
-
-        <div className="card-list">
-          {(announcements.data ?? []).map((item) => (
-            <article key={item.id} className="info-card">
-              <div className="card-topline">
-                <h3>{item.title}</h3>
-                <span className="category-chip">{item.category}</span>
-              </div>
-              <p><strong>Published:</strong> {formatDate(item.publishDate)}</p>
-              <p>{item.message}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      {/* ── Workflow ── */}
-      <section id="workflow" className="panel">
-        <div className="section-heading compact">
-          <div>
-            <p className="eyebrow">Decision workflow</p>
-            <h2>Release process</h2>
-          </div>
-        </div>
-
-        {workflow.loading && <p>Loading workflow…</p>}
-        {workflow.error   && <p style={{ color: '#b91c1c' }}>{workflow.error}</p>}
-
-        <div className="timeline">
-          {(workflow.data ?? []).map((item) => (
-            <div key={item.order} className="timeline-item">
-              <span>{item.order}</span>
-              <div>
-                <h3>{item.title}</h3>
-                <p>{item.detail}</p>
-              </div>
-            </div>
           ))}
         </div>
       </section>

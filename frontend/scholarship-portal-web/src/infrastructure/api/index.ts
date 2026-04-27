@@ -13,6 +13,9 @@ import type {
   AuthResponse,
   ApplicationDocumentSummary,
   ReviewerSummary,
+  StudentProfile,
+  ReviewerProfile as ReviewerProfileEntity,
+  AdminProfile,
 } from '../../domain/entities'
 import type {
   IScholarshipRepository,
@@ -191,4 +194,60 @@ export function listReviewers() {
 
 export function assignScholarshipReviewer(scholarshipId: number, reviewerId: string | null) {
   return apiPut<Scholarship, { reviewerId: string | null }>(`/api/scholarships/${scholarshipId}/reviewer`, { reviewerId })
+}
+
+export interface UpdateStudentProfileRequest {
+  studentNumber?: string | null
+  faculty?: string | null
+  department?: string | null
+  program?: string | null
+  currentYear?: number | null
+  gpa?: number | null
+  phoneNumber?: string | null
+  address?: string | null
+  nationality?: string | null
+  personalStatement?: string | null
+}
+
+export interface UpdateReviewerProfileRequest {
+  staffNumber?: string | null
+  department?: string | null
+  title?: string | null
+  expertiseAreas?: string | null
+  officeLocation?: string | null
+  phoneNumber?: string | null
+  bio?: string | null
+  maxActiveReviews?: number | null
+  isAvailable: boolean
+}
+
+export interface UpdateAdminProfileRequest {
+  department?: string | null
+  title?: string | null
+  officeLocation?: string | null
+  phoneNumber?: string | null
+}
+
+export function getStudentProfile() {
+  return apiGet<StudentProfile>('/api/profile')
+}
+
+export function getReviewerProfile() {
+  return apiGet<ReviewerProfileEntity>('/api/profile')
+}
+
+export function getAdminProfile() {
+  return apiGet<AdminProfile>('/api/profile')
+}
+
+export function updateStudentProfile(request: UpdateStudentProfileRequest) {
+  return apiPut<StudentProfile, UpdateStudentProfileRequest>('/api/profile/student', request)
+}
+
+export function updateReviewerProfile(request: UpdateReviewerProfileRequest) {
+  return apiPut<ReviewerProfileEntity, UpdateReviewerProfileRequest>('/api/profile/reviewer', request)
+}
+
+export function updateAdminProfile(request: UpdateAdminProfileRequest) {
+  return apiPut<AdminProfile, UpdateAdminProfileRequest>('/api/profile/admin', request)
 }

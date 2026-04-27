@@ -15,6 +15,24 @@ export function LoginPage({ onAuthenticated }: Props) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState('Student')
+  const [studentNumber, setStudentNumber] = useState('')
+  const [faculty, setFaculty] = useState('')
+  const [department, setDepartment] = useState('')
+  const [program, setProgram] = useState('')
+  const [currentYear, setCurrentYear] = useState('')
+  const [gpa, setGpa] = useState('')
+  const [dateOfBirth, setDateOfBirth] = useState('')
+  const [address, setAddress] = useState('')
+  const [nationality, setNationality] = useState('')
+  const [personalStatement, setPersonalStatement] = useState('')
+  const [staffNumber, setStaffNumber] = useState('')
+  const [title, setTitle] = useState('')
+  const [expertiseAreas, setExpertiseAreas] = useState('')
+  const [officeLocation, setOfficeLocation] = useState('')
+  const [phoneNumber, setPhoneNumber] = useState('')
+  const [bio, setBio] = useState('')
+  const [maxActiveReviews, setMaxActiveReviews] = useState('')
+  const [isAvailable, setIsAvailable] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -26,7 +44,30 @@ export function LoginPage({ onAuthenticated }: Props) {
     try {
       const auth = mode === 'login'
         ? await loginUser(authApi)({ email, password })
-        : await registerUser(authApi)({ fullName, email, password, role })
+        : await registerUser(authApi)({
+          fullName,
+          email,
+          password,
+          role,
+          studentNumber: studentNumber || undefined,
+          faculty: faculty || undefined,
+          department: department || undefined,
+          program: program || undefined,
+          currentYear: currentYear ? Number(currentYear) : undefined,
+          gpa: gpa ? Number(gpa) : undefined,
+          dateOfBirth: dateOfBirth || undefined,
+          address: address || undefined,
+          nationality: nationality || undefined,
+          personalStatement: personalStatement || undefined,
+          staffNumber: staffNumber || undefined,
+          title: title || undefined,
+          expertiseAreas: expertiseAreas || undefined,
+          officeLocation: officeLocation || undefined,
+          phoneNumber: phoneNumber || undefined,
+          bio: bio || undefined,
+          maxActiveReviews: maxActiveReviews ? Number(maxActiveReviews) : undefined,
+          isAvailable,
+        })
 
       onAuthenticated(auth)
     } catch (err) {
@@ -93,6 +134,145 @@ export function LoginPage({ onAuthenticated }: Props) {
                   <option>Admin</option>
                 </select>
               </label>
+            )}
+
+            {mode === 'register' && role === 'Student' && (
+              <>
+                <div className="auth-grid">
+                  <label className="form-field">
+                    <span>Student number</span>
+                    <input value={studentNumber} onChange={(e) => setStudentNumber(e.target.value)} />
+                  </label>
+                  <label className="form-field">
+                    <span>Faculty</span>
+                    <input value={faculty} onChange={(e) => setFaculty(e.target.value)} />
+                  </label>
+                </div>
+
+                <div className="auth-grid">
+                  <label className="form-field">
+                    <span>Department</span>
+                    <input value={department} onChange={(e) => setDepartment(e.target.value)} />
+                  </label>
+                  <label className="form-field">
+                    <span>Program</span>
+                    <input value={program} onChange={(e) => setProgram(e.target.value)} />
+                  </label>
+                </div>
+
+                <label className="form-field">
+                  <span>Current year</span>
+                  <input type="number" min={1} value={currentYear} onChange={(e) => setCurrentYear(e.target.value)} />
+                </label>
+
+                <div className="auth-grid">
+                  <label className="form-field">
+                    <span>GPA</span>
+                    <input type="number" min={0} max={4} step="0.01" value={gpa} onChange={(e) => setGpa(e.target.value)} />
+                  </label>
+                  <label className="form-field">
+                    <span>Date of birth</span>
+                    <input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
+                  </label>
+                </div>
+
+                <div className="auth-grid">
+                  <label className="form-field">
+                    <span>Address</span>
+                    <input value={address} onChange={(e) => setAddress(e.target.value)} />
+                  </label>
+                  <label className="form-field">
+                    <span>Nationality</span>
+                    <input value={nationality} onChange={(e) => setNationality(e.target.value)} />
+                  </label>
+                </div>
+
+                <label className="form-field">
+                  <span>Personal statement</span>
+                  <textarea rows={3} value={personalStatement} onChange={(e) => setPersonalStatement(e.target.value)} />
+                </label>
+              </>
+            )}
+
+            {mode === 'register' && role === 'Reviewer' && (
+              <>
+                <div className="auth-grid">
+                  <label className="form-field">
+                    <span>Staff number</span>
+                    <input value={staffNumber} onChange={(e) => setStaffNumber(e.target.value)} />
+                  </label>
+                  <label className="form-field">
+                    <span>Department</span>
+                    <input value={department} onChange={(e) => setDepartment(e.target.value)} />
+                  </label>
+                </div>
+
+                <div className="auth-grid">
+                  <label className="form-field">
+                    <span>Title</span>
+                    <input value={title} onChange={(e) => setTitle(e.target.value)} />
+                  </label>
+                  <label className="form-field">
+                    <span>Office location</span>
+                    <input value={officeLocation} onChange={(e) => setOfficeLocation(e.target.value)} />
+                  </label>
+                </div>
+
+                <label className="form-field">
+                  <span>Phone number</span>
+                  <input value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} />
+                </label>
+
+                <label className="form-field">
+                  <span>Expertise areas</span>
+                  <textarea rows={3} value={expertiseAreas} onChange={(e) => setExpertiseAreas(e.target.value)} />
+                </label>
+
+                <div className="auth-grid">
+                  <label className="form-field">
+                    <span>Max active reviews</span>
+                    <input type="number" min={0} value={maxActiveReviews} onChange={(e) => setMaxActiveReviews(e.target.value)} />
+                  </label>
+                  <label className="form-field">
+                    <span>Available</span>
+                    <select value={String(isAvailable)} onChange={(e) => setIsAvailable(e.target.value === 'true')}>
+                      <option value="true">Yes</option>
+                      <option value="false">No</option>
+                    </select>
+                  </label>
+                </div>
+
+                <label className="form-field">
+                  <span>Bio</span>
+                  <textarea rows={3} value={bio} onChange={(e) => setBio(e.target.value)} />
+                </label>
+              </>
+            )}
+
+            {mode === 'register' && role === 'Admin' && (
+              <>
+                <div className="auth-grid">
+                  <label className="form-field">
+                    <span>Department</span>
+                    <input value={department} onChange={(e) => setDepartment(e.target.value)} />
+                  </label>
+                  <label className="form-field">
+                    <span>Title</span>
+                    <input value={title} onChange={(e) => setTitle(e.target.value)} />
+                  </label>
+                </div>
+
+                <div className="auth-grid">
+                  <label className="form-field">
+                    <span>Office location</span>
+                    <input value={officeLocation} onChange={(e) => setOfficeLocation(e.target.value)} />
+                  </label>
+                  <label className="form-field">
+                    <span>Phone number</span>
+                    <input value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} />
+                  </label>
+                </div>
+              </>
             )}
 
             {error && <p className="auth-error">{error}</p>}

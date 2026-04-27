@@ -23,6 +23,7 @@ public static class AppDbInitializer
 
         await SeedRolesAsync(roleManager);
         await SeedUsersAsync(userManager);
+        await SeedProfilesAsync(db, userManager);
         await SeedScholarshipsAsync(db);
         await SeedApplicationsAsync(db);
         await SeedReviewsAsync(db);
@@ -54,7 +55,14 @@ public static class AppDbInitializer
 
             if (user is null)
             {
-                user = new AppUser { UserName = email, Email = email, FullName = fullName };
+                user = new AppUser
+                {
+                    UserName = email,
+                    Email = email,
+                    FullName = fullName,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                };
 
                 var result = await userManager.CreateAsync(user, "Password123");
                 if (!result.Succeeded)
@@ -63,14 +71,36 @@ public static class AppDbInitializer
                     throw new InvalidOperationException($"Failed to seed user {email}: {errors}");
                 }
             }
-            else if (!string.Equals(user.FullName, fullName, StringComparison.Ordinal))
+            else
             {
-                user.FullName = fullName;
-                var updateResult = await userManager.UpdateAsync(user);
-                if (!updateResult.Succeeded)
+                var needsUpdate = false;
+
+                if (!string.Equals(user.FullName, fullName, StringComparison.Ordinal))
                 {
-                    var errors = string.Join("; ", updateResult.Errors.Select(e => e.Description));
-                    throw new InvalidOperationException($"Failed to update seeded user {email}: {errors}");
+                    user.FullName = fullName;
+                    needsUpdate = true;
+                }
+
+                if (!user.IsActive)
+                {
+                    user.IsActive = true;
+                    needsUpdate = true;
+                }
+
+                if (user.CreatedAt == default)
+                {
+                    user.CreatedAt = DateTime.UtcNow;
+                    needsUpdate = true;
+                }
+
+                if (needsUpdate)
+                {
+                    var updateResult = await userManager.UpdateAsync(user);
+                    if (!updateResult.Succeeded)
+                    {
+                        var errors = string.Join("; ", updateResult.Errors.Select(e => e.Description));
+                        throw new InvalidOperationException($"Failed to update seeded user {email}: {errors}");
+                    }
                 }
             }
 
@@ -96,6 +126,35 @@ public static class AppDbInitializer
                 }
             }
         }
+    }
+
+    private static async Task SeedProfilesAsync(AppDbContext db, UserManager<AppUser> userManager)
+    {
+        var users = await userManager.Users.ToListAsync();
+        foreach (var user in users)
+        {
+            var roles = await userManager.GetRolesAsync(user);
+
+            if (roles.Any(r => r.Equals("Student", StringComparison.OrdinalIgnoreCase))
+                && !await db.StudentProfiles.AnyAsync(p => p.UserId == user.Id))
+            {
+                db.StudentProfiles.Add(StudentProfile.Create(user.Id));
+            }
+
+            if (roles.Any(r => r.Equals("Reviewer", StringComparison.OrdinalIgnoreCase))
+                && !await db.ReviewerProfiles.AnyAsync(p => p.UserId == user.Id))
+            {
+                db.ReviewerProfiles.Add(ReviewerProfile.Create(user.Id));
+            }
+
+            if (roles.Any(r => r.Equals("Admin", StringComparison.OrdinalIgnoreCase))
+                && !await db.AdminProfiles.AnyAsync(p => p.UserId == user.Id))
+            {
+                db.AdminProfiles.Add(AdminProfile.Create(user.Id));
+            }
+        }
+
+        await db.SaveChangesAsync();
     }
 
     private static async Task SeedScholarshipsAsync(AppDbContext db)

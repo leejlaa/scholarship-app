@@ -10,11 +10,14 @@ namespace ScholarshipPortal.Infrastructure.Persistence;
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     : IdentityDbContext<AppUser, AppRole, string>(options)
 {
-    public DbSet<Scholarship>        Scholarships        => Set<Scholarship>();
-    public DbSet<DomainApp>          Applications        => Set<DomainApp>();
+    public DbSet<Scholarship>         Scholarships         => Set<Scholarship>();
+    public DbSet<DomainApp>           Applications         => Set<DomainApp>();
     public DbSet<ApplicationDocument> ApplicationDocuments => Set<ApplicationDocument>();
-    public DbSet<Review>             Reviews             => Set<Review>();
-    public DbSet<Announcement>       Announcements       => Set<Announcement>();
+    public DbSet<Review>              Reviews              => Set<Review>();
+    public DbSet<Announcement>        Announcements        => Set<Announcement>();
+    public DbSet<StudentProfile>      StudentProfiles      => Set<StudentProfile>();
+    public DbSet<ReviewerProfile>     ReviewerProfiles     => Set<ReviewerProfile>();
+    public DbSet<AdminProfile>        AdminProfiles        => Set<AdminProfile>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -25,5 +28,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         modelBuilder.ApplyConfiguration(new ApplicationDocumentConfiguration());
         modelBuilder.ApplyConfiguration(new ReviewConfiguration());
         modelBuilder.ApplyConfiguration(new AnnouncementConfiguration());
+        modelBuilder.ApplyConfiguration(new StudentProfileConfiguration());
+        modelBuilder.ApplyConfiguration(new ReviewerProfileConfiguration());
+        modelBuilder.ApplyConfiguration(new AdminProfileConfiguration());
     }
 }

@@ -8,6 +8,9 @@ import { StudentDashboard } from './presentation/pages/StudentDashboard'
 import { ReviewerDashboard } from './presentation/pages/ReviewerDashboard'
 import { AdminDashboard } from './presentation/pages/AdminDashboard'
 import { LoginPage } from './presentation/pages/LoginPage'
+import { StudentProfilePage } from './presentation/pages/StudentProfilePage'
+import { ReviewerProfilePage } from './presentation/pages/ReviewerProfilePage'
+import { AdminProfilePage } from './presentation/pages/AdminProfilePage'
 
 export default function App() {
   const [auth, setAuth] = useState<AuthResponse | null>(() => getStoredAuth())
@@ -36,8 +39,19 @@ export default function App() {
         path="/student"
         element={
           <ProtectedRoute auth={auth} allowed={['student']}>
-            <PortalLayout auth={auth!} activeRole="student" onLogout={handleLogout}>
+            <PortalLayout auth={auth!} activeRole="student" onLogout={handleLogout} pageTitle="Dashboard">
               <StudentDashboard />
+            </PortalLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/student/profile"
+        element={
+          <ProtectedRoute auth={auth} allowed={['student']}>
+            <PortalLayout auth={auth!} activeRole="student" onLogout={handleLogout} pageTitle="Profile">
+              <StudentProfilePage />
             </PortalLayout>
           </ProtectedRoute>
         }
@@ -47,8 +61,19 @@ export default function App() {
         path="/reviewer"
         element={
           <ProtectedRoute auth={auth} allowed={['reviewer']}>
-            <PortalLayout auth={auth!} activeRole="reviewer" onLogout={handleLogout}>
+            <PortalLayout auth={auth!} activeRole="reviewer" onLogout={handleLogout} pageTitle="Dashboard">
               <ReviewerDashboard />
+            </PortalLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/reviewer/profile"
+        element={
+          <ProtectedRoute auth={auth} allowed={['reviewer']}>
+            <PortalLayout auth={auth!} activeRole="reviewer" onLogout={handleLogout} pageTitle="Profile">
+              <ReviewerProfilePage />
             </PortalLayout>
           </ProtectedRoute>
         }
@@ -58,8 +83,19 @@ export default function App() {
         path="/admin"
         element={
           <ProtectedRoute auth={auth} allowed={['admin']}>
-            <PortalLayout auth={auth!} activeRole="admin" onLogout={handleLogout}>
+            <PortalLayout auth={auth!} activeRole="admin" onLogout={handleLogout} pageTitle="Dashboard">
               <AdminDashboard />
+            </PortalLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin/profile"
+        element={
+          <ProtectedRoute auth={auth} allowed={['admin']}>
+            <PortalLayout auth={auth!} activeRole="admin" onLogout={handleLogout} pageTitle="Profile">
+              <AdminProfilePage />
             </PortalLayout>
           </ProtectedRoute>
         }

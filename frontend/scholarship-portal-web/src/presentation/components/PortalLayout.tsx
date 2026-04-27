@@ -32,17 +32,18 @@ const ROLE_SUMMARY: Record<Role, { title: string }> = {
   },
 }
 
-const ROLE_SECTIONS: Record<Role, Array<{ label: string; href: string; icon: typeof Compass }>> = {
+const ROLE_SECTIONS: Record<Role, Array<{ label: string; to: string; icon: typeof Compass }>> = {
   student: [
-    { label: 'Browse opportunities', href: '#opportunities', icon: Compass },
-    { label: 'My applications', href: '#applications', icon: LayoutDashboard },
-    { label: 'Document uploads', href: '#documents', icon: Upload },
+    { label: 'Overview', to: '/student', icon: LayoutDashboard },
+    { label: 'Profile details', to: '/student/profile', icon: Upload },
   ],
   reviewer: [
-    { label: 'Review queue', href: '#queue', icon: ClipboardCheck },
+    { label: 'Overview', to: '/reviewer', icon: ClipboardCheck },
+    { label: 'Profile details', to: '/reviewer/profile', icon: Upload },
   ],
   admin: [
-    { label: 'Scholarship management', href: '#scholarships', icon: LayoutDashboard },
+    { label: 'Overview', to: '/admin', icon: LayoutDashboard },
+    { label: 'Profile details', to: '/admin/profile', icon: Upload },
   ],
 }
 
@@ -78,12 +79,12 @@ interface PortalLayoutProps {
   auth: AuthResponse
   activeRole: Role
   onLogout: () => void
+  pageTitle?: string
   children: ReactNode
 }
 
-export function PortalLayout({ auth, activeRole, onLogout, children }: PortalLayoutProps) {
+export function PortalLayout({ auth, activeRole, onLogout, pageTitle = 'Dashboard', children }: PortalLayoutProps) {
   const overview = usePortalOverview(true)
-  const currentRole = normaliseRole(auth.role)
   const [searchQuery, setSearchQuery] = useState('')
   const initials = auth.fullName
     .split(' ')
@@ -114,17 +115,13 @@ export function PortalLayout({ auth, activeRole, onLogout, children }: PortalLay
           <CardContent className="sidebar-body">
             <div className="sidebar-group">
               <p className="sidebar-title">Navigation</p>
-              <NavLink to={defaultRouteForRole(currentRole)} className={({ isActive }) => cn('sidebar-link', isActive && 'active')}>
-                <LayoutDashboard size={16} />
-                <span>Overview</span>
-              </NavLink>
               {ROLE_SECTIONS[activeRole].map((link) => {
                 const Icon = link.icon
                 return (
-                  <a key={link.href} href={link.href} className="sidebar-link">
+                  <NavLink key={link.to} to={link.to} className={({ isActive }) => cn('sidebar-link', isActive && 'active')}>
                     <Icon size={16} />
                     <span>{link.label}</span>
-                  </a>
+                  </NavLink>
                 )
               })}
             </div>
@@ -135,7 +132,7 @@ export function PortalLayout({ auth, activeRole, onLogout, children }: PortalLay
           <Card className="top-nav top-nav-card">
             <CardContent className="top-nav-content">
               <div className="top-nav-main">
-                <h1 className="page-title">Dashboard</h1>
+                <h1 className="page-title">{pageTitle}</h1>
                 <p className="page-subtitle">{ROLE_SUMMARY[activeRole].title}</p>
               </div>
 

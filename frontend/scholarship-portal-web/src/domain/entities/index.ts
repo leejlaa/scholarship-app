@@ -80,6 +80,26 @@ export interface RegisterRequest {
   email: string
   password: string
   role: string
+  // Student fields
+  studentNumber?: string
+  faculty?: string
+  department?: string
+  program?: string
+  currentYear?: number
+  gpa?: number
+  dateOfBirth?: string
+  address?: string
+  nationality?: string
+  personalStatement?: string
+  // Reviewer fields
+  staffNumber?: string
+  title?: string
+  expertiseAreas?: string
+  officeLocation?: string
+  phoneNumber?: string
+  bio?: string
+  maxActiveReviews?: number
+  isAvailable?: boolean
 }
 
 export interface AuthResponse {
@@ -88,4 +108,47 @@ export interface AuthResponse {
   fullName: string
   role: string
   expiresAt: string
+}
+
+// ── Role-specific profile shapes (returned by GET /api/profile) ──────────
+
+export interface StudentProfile {
+  userId: string
+  fullName: string
+  email: string
+  studentNumber: string | null
+  faculty: string | null
+  department: string | null
+  program: string | null
+  currentYear: number | null
+  gpa: number | null
+  phoneNumber: string | null
+  address: string | null
+  nationality: string | null
+  personalStatement: string | null
+}
+
+export interface ReviewerProfile {
+  userId: string
+  fullName: string
+  email: string
+  staffNumber: string | null
+  department: string | null
+  title: string | null
+  expertiseAreas: string | null
+  officeLocation: string | null
+  phoneNumber: string | null
+  bio: string | null
+  maxActiveReviews: number | null
+  isAvailable: boolean
+}
+
+export interface AdminProfile {
+  userId: string
+  fullName: string
+  email: string
+  department: string | null
+  title: string | null
+  officeLocation: string | null
+  phoneNumber: string | null
 }

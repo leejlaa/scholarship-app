@@ -1,99 +1,92 @@
-# Scholarship Management Portal Starter
+# Scholarship Application Portal
 
-This workspace now includes a practical starter for a **Scholarship Management Portal** using **ASP.NET Core Web API** and **React + Vite**.
+Full-stack scholarship portal with role-based workflows for **Student**, **Reviewer**, and **Admin**.
 
-## ✅ What is included
+## Tech stack
 
-- `backend/ScholarshipPortal.Api` — minimal ASP.NET API with seeded endpoints for:
-  - scholarship postings
-  - applications and status tracking
-  - reviewer queue with scores and comments
-  - admin announcements and workflow steps
-- `frontend/scholarship-portal-web` — React dashboard with role-based views for:
-  - **Student**
-  - **Reviewer**
-  - **Admin**
+- Backend: ASP.NET Core Web API (.NET 11), EF Core, SQLite, ASP.NET Identity, JWT
+- Frontend: React + TypeScript + Vite
+- Architecture: Domain / Application / Infrastructure / API layers
 
-## 🧱 Recommended production architecture
+## Features
 
-| Layer | Recommended choice |
-| --- | --- |
-| Frontend | React + TypeScript + Vite |
-| Backend | ASP.NET Core Web API |
-| Auth | ASP.NET Identity + JWT |
-| Database | SQL Server + Entity Framework Core |
-| File Uploads | Azure Blob Storage or local storage for development |
-| Notifications | Email service (SendGrid / SMTP) |
+- Authentication with role-based access (`Student`, `Reviewer`, `Admin`)
+- Scholarship CRUD and reviewer assignment (admin)
+- Student application submission and supporting document uploads
+- Reviewer queue and review scoring/comments
+- Admin announcements and portal overview
+- Ownership/authorization guards for student and reviewer actions
 
-## 📌 Core modules to build next
+## Identity model
 
-1. **Authentication & Roles**
-   - Student, Reviewer, Admin login
-   - role-based authorization
+- `AppRole` remains generic for authorization role names.
+- `AppUser` stores shared user data.
+- Role-specific data is stored via one-to-one profiles:
+  - `StudentProfile`
+  - `ReviewerProfile`
+  - `AdminProfile`
 
-2. **Scholarship Management**
-   - create/edit/archive scholarships
-   - deadlines, eligibility criteria, award amount
+This keeps authorization concerns separate from role-specific business data.
 
-3. **Application Workflow**
-   - student form submission
-   - required document upload
-   - automatic completeness and eligibility checks
+## Project structure
 
-4. **Review & Scoring**
-   - assign reviewers
-   - scoring rubric
-   - reviewer comments and recommendations
+- `backend/ScholarshipPortal.Api` — HTTP API controllers and startup
+- `backend/ScholarshipPortal.Application` — use cases, DTOs, services
+- `backend/ScholarshipPortal.Domain` — entities, enums, repository interfaces
+- `backend/ScholarshipPortal.Infrastructure` — EF Core, Identity, repositories, storage
+- `frontend/scholarship-portal-web` — React web client
 
-5. **Decision & Results**
-   - approve/reject/waitlist applications
-   - publish results
-   - notify students
-
-## 🗃️ Suggested database tables
-
-- `Users`
-- `Roles`
-- `Scholarships`
-- `Applications`
-- `ApplicationDocuments`
-- `EligibilityRules`
-- `Reviews`
-- `Announcements`
-- `Results`
-- `AuditLogs`
-
-## ▶️ Run locally
+## Run locally
 
 ### Backend
+
 ```bash
 cd backend/ScholarshipPortal.Api
 dotnet run --launch-profile http
 ```
-API base URL: `http://localhost:5241`
+
+Default URL: `http://localhost:5241`
+
+If port `5241` is busy:
+
+```bash
+ASPNETCORE_ENVIRONMENT=Development ASPNETCORE_URLS=http://127.0.0.1:5242 dotnet run --no-launch-profile
+```
 
 ### Frontend
+
 ```bash
 cd frontend/scholarship-portal-web
+npm install
 npm run dev
 ```
-App URL: `http://localhost:5173`
 
-## 🧪 Useful starter endpoints
+Default URL: `http://localhost:5173`
 
-- `GET /api/health`
+## Migrations
+
+Create a migration:
+
+```bash
+dotnet ef migrations add <MigrationName> \
+  --project backend/ScholarshipPortal.Infrastructure/ScholarshipPortal.Infrastructure.csproj \
+  --startup-project backend/ScholarshipPortal.Api/ScholarshipPortal.Api.csproj \
+  --output-dir Persistence/Migrations
+```
+
+Apply migrations at runtime through `AppDbInitializer.SeedAsync(...)` on API startup.
+
+## Seeded users
+
+- Student: `student@scholarship.local` / `Password123`
+- Reviewer: `reviewer@scholarship.local` / `Password123`
+- Admin: `admin@scholarship.local` / `Password123`
+
+## API examples
+
+- `POST /api/auth/register`
+- `POST /api/auth/login`
 - `GET /api/overview`
 - `GET /api/scholarships`
-- `GET /api/applications`
-- `GET /api/reviewer/queue`
-- `GET /api/announcements`
-- `GET /api/workflow`
-
-## 🚀 Suggested next implementation steps
-
-- replace seeded demo data with EF Core models and SQL Server
-- add ASP.NET Identity and JWT authentication
-- build real file upload endpoints
-- add validation, pagination, and audit logs
-- write API and UI tests before expanding workflow logic
-# scholarship-app
+- `POST /api/applications`
+- `POST /api/reviews`

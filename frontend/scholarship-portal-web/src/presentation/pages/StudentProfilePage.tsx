@@ -32,6 +32,8 @@ const EMPTY_FORM: StudentProfileForm = {
   personalStatement: '',
 }
 
+const inputCls = 'h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring disabled:opacity-50'
+
 export function StudentProfilePage() {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -74,9 +76,7 @@ export function StudentProfilePage() {
     }
 
     void load()
-    return () => {
-      active = false
-    }
+    return () => { active = false }
   }, [])
 
   function patch<K extends keyof StudentProfileForm>(key: K, value: StudentProfileForm[K]) {
@@ -115,88 +115,104 @@ export function StudentProfilePage() {
   }
 
   if (busy) {
-    return <p>Loading profile…</p>
+    return <p className="text-sm text-muted-foreground px-6 py-8">Loading profile…</p>
   }
 
   return (
-    <div className="content-grid">
-      <section className="form-card">
-        <div className="section-heading compact">
-          <div>
-            <p className="eyebrow">Profile details</p>
-            <h2>Student profile</h2>
-          </div>
+    <div className="max-w-2xl">
+      <div className="rounded-xl border bg-card p-6 flex flex-col gap-6">
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-1">Profile details</p>
+          <h2 className="text-xl font-semibold text-foreground">Student profile</h2>
         </div>
 
-        <form className="crud-form" onSubmit={handleSave}>
-          <div className="form-row">
-            <label>Full name
-              <input value={fullName} readOnly />
+        <form className="flex flex-col gap-4" onSubmit={handleSave}>
+          <div className="grid grid-cols-2 gap-4">
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+              Full name
+              <input className={inputCls} value={fullName} readOnly />
             </label>
-            <label>Email
-              <input value={email} readOnly />
-            </label>
-          </div>
-
-          <div className="form-row">
-            <label>Role
-              <input value="Student" readOnly />
-            </label>
-            <label>Student number
-              <input value={form.studentNumber} onChange={(e) => patch('studentNumber', e.target.value)} />
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+              Email
+              <input className={inputCls} value={email} readOnly />
             </label>
           </div>
 
-          <div className="form-row">
-            <label>Faculty
-              <input value={form.faculty} onChange={(e) => patch('faculty', e.target.value)} />
+          <div className="grid grid-cols-2 gap-4">
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+              Role
+              <input className={inputCls} value="Student" readOnly />
             </label>
-            <label>Department
-              <input value={form.department} onChange={(e) => patch('department', e.target.value)} />
-            </label>
-          </div>
-
-          <div className="form-row">
-            <label>Program
-              <input value={form.program} onChange={(e) => patch('program', e.target.value)} />
-            </label>
-            <label>Current year
-              <input type="number" min={1} value={form.currentYear} onChange={(e) => patch('currentYear', e.target.value)} />
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+              Student number
+              <input className={inputCls} value={form.studentNumber} onChange={(e) => patch('studentNumber', e.target.value)} />
             </label>
           </div>
 
-          <div className="form-row">
-            <label>GPA
-              <input type="number" step="0.01" min={0} max={4} value={form.gpa} onChange={(e) => patch('gpa', e.target.value)} />
+          <div className="grid grid-cols-2 gap-4">
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+              Faculty
+              <input className={inputCls} value={form.faculty} onChange={(e) => patch('faculty', e.target.value)} />
             </label>
-            <label>Phone number
-              <input value={form.phoneNumber} onChange={(e) => patch('phoneNumber', e.target.value)} />
-            </label>
-          </div>
-
-          <div className="form-row">
-            <label>Address
-              <input value={form.address} onChange={(e) => patch('address', e.target.value)} />
-            </label>
-            <label>Nationality
-              <input value={form.nationality} onChange={(e) => patch('nationality', e.target.value)} />
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+              Department
+              <input className={inputCls} value={form.department} onChange={(e) => patch('department', e.target.value)} />
             </label>
           </div>
 
-          <label>Personal statement
-            <textarea rows={4} value={form.personalStatement} onChange={(e) => patch('personalStatement', e.target.value)} />
+          <div className="grid grid-cols-2 gap-4">
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+              Program
+              <input className={inputCls} value={form.program} onChange={(e) => patch('program', e.target.value)} />
+            </label>
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+              Current year
+              <input className={inputCls} type="number" min={1} value={form.currentYear} onChange={(e) => patch('currentYear', e.target.value)} />
+            </label>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+              GPA
+              <input className={inputCls} type="number" step="0.01" min={0} max={4} value={form.gpa} onChange={(e) => patch('gpa', e.target.value)} />
+            </label>
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+              Phone number
+              <input className={inputCls} value={form.phoneNumber} onChange={(e) => patch('phoneNumber', e.target.value)} />
+            </label>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+              Address
+              <input className={inputCls} value={form.address} onChange={(e) => patch('address', e.target.value)} />
+            </label>
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+              Nationality
+              <input className={inputCls} value={form.nationality} onChange={(e) => patch('nationality', e.target.value)} />
+            </label>
+          </div>
+
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+            Personal statement
+            <textarea
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring resize-none"
+              rows={4}
+              value={form.personalStatement}
+              onChange={(e) => patch('personalStatement', e.target.value)}
+            />
           </label>
 
-          {error && <p className="auth-error">{error}</p>}
-          {success && <p className="auth-success">{success}</p>}
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          {success && <p className="text-sm text-green-700">{success}</p>}
 
-          <div className="form-actions">
-            <Button type="submit" className="primary-action" disabled={saving}>
+          <div>
+            <Button type="submit" disabled={saving}>
               {saving ? 'Saving…' : 'Save profile'}
             </Button>
           </div>
         </form>
-      </section>
+      </div>
     </div>
   )
 }

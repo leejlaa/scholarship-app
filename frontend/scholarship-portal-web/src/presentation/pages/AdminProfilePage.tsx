@@ -20,6 +20,8 @@ const EMPTY_FORM: AdminProfileForm = {
   phoneNumber: '',
 }
 
+const inputCls = 'h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring disabled:opacity-50'
+
 export function AdminProfilePage() {
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -56,9 +58,7 @@ export function AdminProfilePage() {
     }
 
     void load()
-    return () => {
-      active = false
-    }
+    return () => { active = false }
   }, [])
 
   function patch<K extends keyof AdminProfileForm>(key: K, value: AdminProfileForm[K]) {
@@ -91,66 +91,72 @@ export function AdminProfilePage() {
   }
 
   if (busy) {
-    return <p>Loading profile…</p>
+    return <p className="text-sm text-muted-foreground px-6 py-8">Loading profile…</p>
   }
 
   return (
-    <div className="content-grid">
-      <section className="form-card">
-        <div className="section-heading compact">
-          <div>
-            <p className="eyebrow">Profile details</p>
-            <h2>Admin profile</h2>
-          </div>
+    <div className="max-w-2xl">
+      <div className="rounded-xl border bg-card p-6 flex flex-col gap-6">
+        <div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-1">Profile details</p>
+          <h2 className="text-xl font-semibold text-foreground">Admin profile</h2>
         </div>
 
-        <form className="crud-form" onSubmit={handleSave}>
-          <div className="form-row">
-            <label>Full name
-              <input value={fullName} readOnly />
+        <form className="flex flex-col gap-4" onSubmit={handleSave}>
+          <div className="grid grid-cols-2 gap-4">
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+              Full name
+              <input className={inputCls} value={fullName} readOnly />
             </label>
-            <label>Email
-              <input value={email} readOnly />
-            </label>
-          </div>
-
-          <div className="form-row">
-            <label>Role
-              <input value="Admin" readOnly />
-            </label>
-            <label>Department
-              <input value={form.department} onChange={(e) => patch('department', e.target.value)} />
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+              Email
+              <input className={inputCls} value={email} readOnly />
             </label>
           </div>
 
-          <div className="form-row">
-            <label>Title
-              <input value={form.title} onChange={(e) => patch('title', e.target.value)} />
+          <div className="grid grid-cols-2 gap-4">
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+              Role
+              <input className={inputCls} value="Admin" readOnly />
             </label>
-            <label>Office location
-              <input value={form.officeLocation} onChange={(e) => patch('officeLocation', e.target.value)} />
-            </label>
-          </div>
-
-          <div className="form-row">
-            <label>Phone number
-              <input value={form.phoneNumber} onChange={(e) => patch('phoneNumber', e.target.value)} />
-            </label>
-            <label>Account status
-              <input value="Active" readOnly />
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+              Department
+              <input className={inputCls} value={form.department} onChange={(e) => patch('department', e.target.value)} />
             </label>
           </div>
 
-          {error && <p className="auth-error">{error}</p>}
-          {success && <p className="auth-success">{success}</p>}
+          <div className="grid grid-cols-2 gap-4">
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+              Title
+              <input className={inputCls} value={form.title} onChange={(e) => patch('title', e.target.value)} />
+            </label>
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+              Office location
+              <input className={inputCls} value={form.officeLocation} onChange={(e) => patch('officeLocation', e.target.value)} />
+            </label>
+          </div>
 
-          <div className="form-actions">
-            <Button type="submit" className="primary-action" disabled={saving}>
+          <div className="grid grid-cols-2 gap-4">
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+              Phone number
+              <input className={inputCls} value={form.phoneNumber} onChange={(e) => patch('phoneNumber', e.target.value)} />
+            </label>
+            <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+              Account status
+              <input className={inputCls} value="Active" readOnly />
+            </label>
+          </div>
+
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          {success && <p className="text-sm text-green-700">{success}</p>}
+
+          <div>
+            <Button type="submit" disabled={saving}>
               {saving ? 'Saving…' : 'Save profile'}
             </Button>
           </div>
         </form>
-      </section>
+      </div>
     </div>
   )
 }

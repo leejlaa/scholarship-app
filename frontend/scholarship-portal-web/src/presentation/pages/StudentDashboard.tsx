@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useScholarships, useApplications } from '../../application/hooks'
-import { StatusBadge, formatDate, formatMoney } from '../components/shared'
+import { StatusBadge, formatDate, formatMoney, StatCard } from '../components/shared'
 import { usePortalSearch } from '../components/PortalLayout'
 import {
   applicationApi,
@@ -10,26 +10,16 @@ import {
 } from '../../infrastructure/api'
 import type { ApplicationCreateRequest } from '../../domain/repositories'
 import type { ApplicationDocumentSummary } from '../../domain/entities'
+import { Button } from '../components/ui/button'
 
 const DOCUMENT_TYPES = ['Transcript', 'Essay', 'Recommendation', 'ID', 'CV', 'Other']
 
-type PendingDocumentInput = {
-  key: number
-  documentType: string
-  file: File | null
-}
+const selectCls = 'h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring'
 
-type UploadDocumentInput = {
-  key: number
-  documentType: string
-  file: File
-}
+type PendingDocumentInput = { key: number; documentType: string; file: File | null }
+type UploadDocumentInput  = { key: number; documentType: string; file: File }
 
-function nextDocumentKey() {
-  return Date.now() + Math.floor(Math.random() * 10000)
-}
-
-// ── Apply-to-scholarship form ───────────────────────────────────────────────
+function nextDocumentKey() { return Date.now() + Math.floor(Math.random() * 10000) }
 
 interface ApplyFormProps {
   scholarships: { id: number; title: string }[]
@@ -48,35 +38,27 @@ function ApplyForm({ scholarships, initialScholarshipId, onSave, onCancel }: App
   const [err, setErr] = useState('')
 
   useEffect(() => {
-    if (initialScholarshipId) {
-      setScholarshipId(initialScholarshipId)
-    }
+    if (initialScholarshipId) setScholarshipId(initialScholarshipId)
   }, [initialScholarshipId])
 
   function updateDocument(key: number, patch: Partial<PendingDocumentInput>) {
-    setDocuments((current) => current.map((doc) => (doc.key === key ? { ...doc, ...patch } : doc)))
+    setDocuments((cur) => cur.map((d) => (d.key === key ? { ...d, ...patch } : d)))
   }
-
   function addDocumentRow() {
-    setDocuments((current) => [...current, { key: nextDocumentKey(), documentType: 'Other', file: null }])
+    setDocuments((cur) => [...cur, { key: nextDocumentKey(), documentType: 'Other', file: null }])
   }
-
   function removeDocumentRow(key: number) {
-    setDocuments((current) => {
-      if (current.length === 1) {
-        return [{ key: nextDocumentKey(), documentType: 'Transcript', file: null }]
-      }
-      return current.filter((doc) => doc.key !== key)
-    })
+    setDocuments((cur) =>
+      cur.length === 1 ? [{ key: nextDocumentKey(), documentType: 'Transcript', file: null }] : cur.filter((d) => d.key !== key)
+    )
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setBusy(true)
     setErr('')
-
     try {
-      const filesToUpload = documents.filter((doc): doc is UploadDocumentInput => doc.file instanceof File)
+      const filesToUpload = documents.filter((d): d is UploadDocumentInput => d.file instanceof File)
       await onSave({ scholarshipId, submit }, filesToUpload)
     } catch (ex: unknown) {
       setErr(ex instanceof Error ? ex.message : 'Failed to create application')
@@ -88,62 +70,62 @@ function ApplyForm({ scholarships, initialScholarshipId, onSave, onCancel }: App
   const selectedScholarship = scholarships.find((s) => s.id === scholarshipId)
 
   return (
-    <form className="crud-form" onSubmit={handleSubmit}>
-      <label>Scholarship
-        <select value={scholarshipId} onChange={(e) => setScholarshipId(Number(e.target.value))} required>
-          {scholarships.map((s) => (
-            <option key={s.id} value={s.id}>{s.title}</option>
-          ))}
+    <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+      <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+        Scholarship
+        <select className={selectCls} value={scholarshipId} onChange={(e) => setScholarshipId(Number(e.target.value))} required>
+          {scholarships.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
         </select>
       </label>
 
       {selectedScholarship && (
-        <p className="apply-inline-note">Applying for <strong>{selectedScholarship.title}</strong></p>
+        <p className="text-sm text-muted-foreground">Applying for <strong className="text-foreground">{selectedScholarship.title}</strong></p>
       )}
 
-      <div className="upload-form-block">
-        <div className="section-heading compact">
+      <div className="rounded-lg border bg-muted/30 p-4 flex flex-col gap-3">
+        <div className="flex items-center justify-between">
           <div>
-            <p className="eyebrow">Supporting documents</p>
-            <h3>Upload files in the same step</h3>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Supporting documents</p>
+            <p className="text-sm font-medium text-foreground">Upload files in the same step</p>
           </div>
-          <button type="button" className="btn-ghost btn-sm" onClick={addDocumentRow}>+ Add file</button>
+          <Button type="button" variant="outline" size="sm" onClick={addDocumentRow}>+ Add file</Button>
         </div>
-
-        <div className="doc-upload-list">
+        <div className="flex flex-col gap-2">
           {documents.map((doc) => (
-            <div key={doc.key} className="doc-upload-item">
-              <div className="form-row">
-                <label>Document type
-                  <select value={doc.documentType} onChange={(e) => updateDocument(doc.key, { documentType: e.target.value })}>
-                    {DOCUMENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+            <div key={doc.key} className="rounded-md border bg-card p-3 flex flex-col gap-2">
+              <div className="grid grid-cols-2 gap-3">
+                <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+                  Document type
+                  <select className={selectCls} value={doc.documentType} onChange={(e) => updateDocument(doc.key, { documentType: e.target.value })}>
+                    {DOCUMENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </label>
-                <label>Choose file
-                  <input type="file" onChange={(e) => updateDocument(doc.key, { file: e.target.files?.[0] ?? null })} />
+                <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+                  Choose file
+                  <input type="file" className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground cursor-pointer file:border-0 file:bg-transparent file:text-xs file:font-medium file:text-muted-foreground" onChange={(e) => updateDocument(doc.key, { file: e.target.files?.[0] ?? null })} />
                 </label>
               </div>
-              <div className="card-actions compact-actions">
-                <span className="helper-text">{doc.file ? `Selected: ${doc.file.name}` : 'No file selected yet'}</span>
-                <button type="button" className="btn-ghost btn-sm" onClick={() => removeDocumentRow(doc.key)}>Remove</button>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">{doc.file ? `Selected: ${doc.file.name}` : 'No file selected yet'}</span>
+                <Button type="button" variant="ghost" size="sm" onClick={() => removeDocumentRow(doc.key)}>Remove</Button>
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      <label className="checkbox-row">
-        <input type="checkbox" checked={submit} onChange={(e) => setSubmit(e.target.checked)} />
+      <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+        <input type="checkbox" className="rounded border-input" checked={submit} onChange={(e) => setSubmit(e.target.checked)} />
         Submit application immediately after upload
       </label>
 
-      {err && <p className="form-error">{err}</p>}
+      {err && <p className="text-sm text-destructive">{err}</p>}
 
-      <div className="form-actions">
-        <button type="submit" className="btn-primary" disabled={busy || scholarships.length === 0}>
+      <div className="flex gap-2">
+        <Button type="submit" disabled={busy || scholarships.length === 0}>
           {busy ? 'Submitting…' : submit ? 'Apply and submit documents' : 'Save draft with documents'}
-        </button>
-        <button type="button" className="btn-ghost" onClick={onCancel} disabled={busy}>Cancel</button>
+        </Button>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={busy}>Cancel</Button>
       </div>
     </form>
   )
@@ -166,54 +148,30 @@ function DocumentPanel({ applications, selectedApplicationId, onUploaded }: Docu
   const [notice, setNotice] = useState('')
 
   useEffect(() => {
-    if (applications.length === 0) {
-      setApplicationId(0)
-      setDocuments([])
-      return
-    }
-
-    if (!applications.some((app) => app.id === applicationId)) {
-      setApplicationId(applications[0].id)
-    }
+    if (applications.length === 0) { setApplicationId(0); setDocuments([]); return }
+    if (!applications.some((a) => a.id === applicationId)) setApplicationId(applications[0].id)
   }, [applicationId, applications])
 
   useEffect(() => {
-    if (selectedApplicationId && applications.some((app) => app.id === selectedApplicationId)) {
+    if (selectedApplicationId && applications.some((a) => a.id === selectedApplicationId))
       setApplicationId(selectedApplicationId)
-    }
   }, [applications, selectedApplicationId])
 
   useEffect(() => {
     async function loadDocuments() {
-      if (!applicationId) {
-        setDocuments([])
-        return
-      }
-
-      setLoadingDocs(true)
-      setErr('')
-      try {
-        setDocuments(await listApplicationDocuments(applicationId))
-      } catch (ex: unknown) {
-        setErr(ex instanceof Error ? ex.message : 'Failed to load documents')
-      } finally {
-        setLoadingDocs(false)
-      }
+      if (!applicationId) { setDocuments([]); return }
+      setLoadingDocs(true); setErr('')
+      try { setDocuments(await listApplicationDocuments(applicationId)) }
+      catch (ex: unknown) { setErr(ex instanceof Error ? ex.message : 'Failed to load documents') }
+      finally { setLoadingDocs(false) }
     }
-
     void loadDocuments()
   }, [applicationId])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!file) {
-      setErr('Choose a file to upload.')
-      return
-    }
-
-    setBusy(true)
-    setErr('')
-    setNotice('')
+    if (!file) { setErr('Choose a file to upload.'); return }
+    setBusy(true); setErr(''); setNotice('')
     try {
       await uploadApplicationDocument(applicationId, file, documentType)
       setNotice(`${file.name} uploaded successfully.`)
@@ -222,62 +180,57 @@ function DocumentPanel({ applications, selectedApplicationId, onUploaded }: Docu
       onUploaded()
     } catch (ex: unknown) {
       setErr(ex instanceof Error ? ex.message : 'Upload failed')
-    } finally {
-      setBusy(false)
-    }
+    } finally { setBusy(false) }
   }
 
   if (applications.length === 0) {
     return (
-      <div className="form-card">
-        <h3>Supporting documents</h3>
-        <p className="helper-text">No applications available.</p>
+      <div className="rounded-xl border bg-card p-6">
+        <h3 className="font-semibold text-foreground mb-1">Supporting documents</h3>
+        <p className="text-sm text-muted-foreground">No applications available.</p>
       </div>
     )
   }
 
   return (
-    <div className="form-card">
-      <form className="crud-form" onSubmit={handleSubmit}>
-        <div className="form-row">
-          <label>Application
-            <select value={applicationId} onChange={(e) => setApplicationId(Number(e.target.value))}>
-              {applications.map((app) => (
-                <option key={app.id} value={app.id}>{app.scholarshipTitle} (#{app.id})</option>
-              ))}
+    <div className="rounded-xl border bg-card p-6 flex flex-col gap-4">
+      <h3 className="font-semibold text-foreground">Supporting documents</h3>
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+        <div className="grid grid-cols-2 gap-4">
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+            Application
+            <select className={selectCls} value={applicationId} onChange={(e) => setApplicationId(Number(e.target.value))}>
+              {applications.map((a) => <option key={a.id} value={a.id}>{a.scholarshipTitle} (#{a.id})</option>)}
             </select>
           </label>
-          <label>Document type
-            <select value={documentType} onChange={(e) => setDocumentType(e.target.value)}>
-              {DOCUMENT_TYPES.map((type) => <option key={type} value={type}>{type}</option>)}
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+            Document type
+            <select className={selectCls} value={documentType} onChange={(e) => setDocumentType(e.target.value)}>
+              {DOCUMENT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </label>
         </div>
-
-        <label>Select file
-          <input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} required />
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+          Select file
+          <input type="file" className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground cursor-pointer file:border-0 file:bg-transparent file:text-xs file:font-medium file:text-muted-foreground" onChange={(e) => setFile(e.target.files?.[0] ?? null)} required />
         </label>
-
-        {notice && <p className="helper-text success-text">{notice}</p>}
-        {err && <p className="form-error">{err}</p>}
-
-        <div className="form-actions">
-          <button type="submit" className="btn-primary" disabled={busy || !file}>
-            {busy ? 'Uploading…' : 'Upload document'}
-          </button>
+        {notice && <p className="text-sm text-green-700">{notice}</p>}
+        {err && <p className="text-sm text-destructive">{err}</p>}
+        <div>
+          <Button type="submit" disabled={busy || !file}>{busy ? 'Uploading…' : 'Upload document'}</Button>
         </div>
       </form>
 
-      <div className="document-section">
-        <h4>Files on this application</h4>
-        {loadingDocs && <p className="helper-text">Loading documents…</p>}
-        {!loadingDocs && documents.length === 0 && <p className="helper-text">No files uploaded yet.</p>}
+      <div className="rounded-lg border bg-muted/30 p-4 flex flex-col gap-2">
+        <h4 className="text-sm font-semibold text-foreground">Files on this application</h4>
+        {loadingDocs && <p className="text-sm text-muted-foreground">Loading documents…</p>}
+        {!loadingDocs && documents.length === 0 && <p className="text-sm text-muted-foreground">No files uploaded yet.</p>}
         {documents.length > 0 && (
-          <ul className="document-list">
+          <ul className="flex flex-col gap-1.5">
             {documents.map((doc) => (
-              <li key={doc.id}>
-                <span><strong>{doc.documentType}:</strong> {doc.fileName}</span>
-                <a href={getDocumentDownloadUrl(doc.storagePath)} target="_blank" rel="noreferrer">Download</a>
+              <li key={doc.id} className="flex items-center justify-between text-sm">
+                <span className="text-foreground"><strong>{doc.documentType}:</strong> {doc.fileName}</span>
+                <a href={getDocumentDownloadUrl(doc.storagePath)} target="_blank" rel="noreferrer" className="text-primary font-medium hover:underline ml-4">Download</a>
               </li>
             ))}
           </ul>
@@ -287,14 +240,11 @@ function DocumentPanel({ applications, selectedApplicationId, onUploaded }: Docu
   )
 }
 
-// ── Main dashboard ─────────────────────────────────────────────────────────
-
 export function StudentDashboard() {
   const [refreshKey, setRefreshKey] = useState(0)
   const scholarships = useScholarships()
   const applications = useApplications(refreshKey)
   const { query: searchQuery } = usePortalSearch()
-
   const refresh = useCallback(() => setRefreshKey((k) => k + 1), [])
 
   const [showForm, setShowForm] = useState(false)
@@ -311,11 +261,10 @@ export function StudentDashboard() {
     shortlisted:  (applications.data ?? []).filter((a) => a.status === 'Shortlisted').length,
     pending:      (applications.data ?? []).filter((a) => a.status !== 'Approved').length,
   }
-
-  const openScholarships = (scholarships.data ?? []).filter((s) => s.status.toLowerCase() === 'open').length
-  const totalApplications = (applications.data ?? []).length
+  const openScholarships   = (scholarships.data ?? []).filter((s) => s.status.toLowerCase() === 'open').length
+  const totalApplications  = (applications.data ?? []).length
   const submittedApplications = (applications.data ?? []).filter((a) => a.status === 'Submitted').length
-  const normalizedQuery = searchQuery.trim().toLowerCase()
+  const normalizedQuery    = searchQuery.trim().toLowerCase()
   const filteredScholarships = (scholarships.data ?? []).filter((item) =>
     normalizedQuery.length === 0
     || item.title.toLowerCase().includes(normalizedQuery)
@@ -326,99 +275,59 @@ export function StudentDashboard() {
 
   useEffect(() => {
     if (!showForm) return
-
-    window.requestAnimationFrame(() => {
-      applyFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
+    window.requestAnimationFrame(() => applyFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   }, [showForm, selectedScholarship])
 
   function openApplyForm(scholarshipId?: number, title?: string) {
-    setApplyNotice('')
-    setDeleteId(null)
-    setSelectedDocumentApplicationId(null)
+    setApplyNotice(''); setDeleteId(null); setSelectedDocumentApplicationId(null)
     setSelectedScholarship(scholarshipId && title ? { id: scholarshipId, title } : null)
     setShowForm(true)
   }
-
   function openDocuments(applicationId: number) {
-    setDeleteId(null)
-    setShowForm(false)
-    setSelectedScholarship(null)
+    setDeleteId(null); setShowForm(false); setSelectedScholarship(null)
     setSelectedDocumentApplicationId(applicationId)
-
-    window.requestAnimationFrame(() => {
-      documentsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
+    window.requestAnimationFrame(() => documentsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   }
 
   async function handleCreate(req: ApplicationCreateRequest, documents: UploadDocumentInput[]) {
-    // Always create as draft first so we have an ID to attach documents to,
-    // then submit afterwards if the checkbox was ticked.
     const created = await applicationApi.create({ ...req, submit: false })
-
-    for (const doc of documents) {
-      await uploadApplicationDocument(created.id, doc.file, doc.documentType)
-    }
-
-    if (req.submit) {
-      await applicationApi.update(created.id, { status: 'Submitted' })
-    }
-
-    setApplyNotice(
-      documents.length > 0
-        ? `Application created and ${documents.length} document${documents.length === 1 ? '' : 's'} uploaded.`
-        : 'Application created successfully.'
-    )
-    setShowForm(false)
-    setSelectedScholarship(null)
-    refresh()
+    for (const doc of documents) await uploadApplicationDocument(created.id, doc.file, doc.documentType)
+    if (req.submit) await applicationApi.update(created.id, { status: 'Submitted' })
+    setApplyNotice(documents.length > 0 ? `Application created and ${documents.length} document${documents.length === 1 ? '' : 's'} uploaded.` : 'Application created successfully.')
+    setShowForm(false); setSelectedScholarship(null); refresh()
   }
 
   async function handleDelete(id: number) {
     setDeleteErr('')
-    try {
-      await applicationApi.remove(id)
-      setDeleteId(null)
-      refresh()
-    } catch (ex: unknown) {
-      setDeleteErr(ex instanceof Error ? ex.message : 'Delete failed')
-    }
+    try { await applicationApi.remove(id); setDeleteId(null); refresh() }
+    catch (ex: unknown) { setDeleteErr(ex instanceof Error ? ex.message : 'Delete failed') }
   }
 
   return (
-    <div className="content-grid student-dashboard">
-      <section className="student-kpi-grid">
-        <article className="student-kpi-card">
-          <p>Open scholarships</p>
-          <strong>{openScholarships}</strong>
-        </article>
-        <article className="student-kpi-card">
-          <p>Total applications</p>
-          <strong>{totalApplications}</strong>
-        </article>
-        <article className="student-kpi-card">
-          <p>Submitted</p>
-          <strong>{submittedApplications}</strong>
-        </article>
-        <article className="student-kpi-card">
-          <p>Shortlisted</p>
-          <strong>{summary.shortlisted}</strong>
-        </article>
-      </section>
+    <div className="flex flex-col gap-6">
+      {/* KPI row */}
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard label="Open scholarships" value={openScholarships} />
+        <StatCard label="Total applications" value={totalApplications} />
+        <StatCard label="Submitted" value={submittedApplications} />
+        <StatCard label="Shortlisted" value={summary.shortlisted} />
+      </div>
 
-      <section id="opportunities" className="panel">
-        <div className="section-heading compact">
+      {/* Opportunities */}
+      <div className="rounded-xl border bg-card p-6 flex flex-col gap-4">
+        <div className="flex items-center justify-between">
           <div>
-            <p className="eyebrow">Scholarship posting</p>
-            <h2>Available opportunities</h2>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Scholarship postings</p>
+            <h2 className="text-xl font-semibold text-foreground">Available opportunities</h2>
           </div>
+          <Button onClick={() => openApplyForm()}>+ New application</Button>
         </div>
 
-        {applyNotice && <p className="helper-text success-text">{applyNotice}</p>}
+        {applyNotice && <p className="text-sm text-green-700">{applyNotice}</p>}
 
         {showForm && (
-          <div ref={applyFormRef} id="apply-form" className="form-card application-form-card">
-            <h3>{selectedScholarship ? `Apply for ${selectedScholarship.title}` : 'New application'}</h3>
+          <div ref={applyFormRef} className="rounded-lg border border-dashed bg-muted/30 p-5">
+            <h3 className="font-semibold text-foreground mb-4">{selectedScholarship ? `Apply for ${selectedScholarship.title}` : 'New application'}</h3>
             <ApplyForm
               scholarships={(scholarships.data ?? []).map((s) => ({ id: s.id, title: s.title }))}
               initialScholarshipId={selectedScholarship?.id}
@@ -428,49 +337,36 @@ export function StudentDashboard() {
           </div>
         )}
 
-        {scholarships.loading && <p>Loading scholarships…</p>}
-        {scholarships.error  && <p style={{ color: '#b91c1c' }}>{scholarships.error}</p>}
+        {scholarships.loading && <p className="text-sm text-muted-foreground">Loading scholarships…</p>}
+        {scholarships.error && <p className="text-sm text-destructive">{scholarships.error}</p>}
+        {normalizedQuery.length > 0 && <p className="text-sm text-muted-foreground">Showing {filteredScholarships.length} result(s) for "{searchQuery}".</p>}
 
-        {normalizedQuery.length > 0 && (
-          <p className="helper-text">Showing {filteredScholarships.length} result(s) for "{searchQuery}".</p>
-        )}
-
-        <div className="card-list student-opportunity-list">
+        <div className="grid grid-cols-2 gap-4">
           {filteredScholarships.map((item) => {
             const isClosed = item.status.toLowerCase() === 'closed'
             const existingApplication = applicationByScholarshipTitle.get(item.title)
-
             return (
-              <article key={item.id} className="info-card student-opportunity-card">
-                <div className="card-topline">
-                  <h3>{item.title}</h3>
+              <article key={item.id} className="rounded-xl border bg-background p-5 flex flex-col gap-3">
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="font-semibold text-foreground">{item.title}</h3>
                   <StatusBadge label={item.status} />
                 </div>
-                <p>{item.audience}</p>
-                <p><strong>Deadline:</strong> {formatDate(item.deadline)}</p>
-                <p><strong>Eligibility:</strong> {item.eligibility}</p>
-                <p><strong>Award:</strong> {formatMoney(item.amount)}</p>
-                <div className="card-actions scholarship-action-row">
+                <p className="text-sm text-muted-foreground">{item.audience}</p>
+                <div className="text-sm text-foreground space-y-0.5">
+                  <p><span className="font-medium">Deadline:</span> {formatDate(item.deadline)}</p>
+                  <p><span className="font-medium">Eligibility:</span> {item.eligibility}</p>
+                  <p><span className="font-medium">Award:</span> {formatMoney(item.amount)}</p>
+                </div>
+                <div className="flex gap-2 mt-auto pt-1">
                   {existingApplication ? (
                     <>
-                      <button type="button" className="btn-ghost" disabled>
-                        Already applied
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-primary"
-                        onClick={() => openDocuments(existingApplication.id)}>
-                        Edit documents
-                      </button>
+                      <Button variant="outline" size="sm" disabled>Already applied</Button>
+                      <Button size="sm" onClick={() => openDocuments(existingApplication.id)}>Edit documents</Button>
                     </>
                   ) : (
-                    <button
-                      type="button"
-                      className="btn-primary"
-                      disabled={isClosed}
-                      onClick={() => openApplyForm(item.id, item.title)}>
+                    <Button size="sm" disabled={isClosed} onClick={() => openApplyForm(item.id, item.title)}>
                       {isClosed ? 'Closed' : 'Apply now'}
-                    </button>
+                    </Button>
                   )}
                 </div>
               </article>
@@ -479,63 +375,67 @@ export function StudentDashboard() {
         </div>
 
         {!scholarships.loading && filteredScholarships.length === 0 && (
-          <p className="helper-text">No scholarships match your search.</p>
+          <p className="text-sm text-muted-foreground">No scholarships match your search.</p>
         )}
-      </section>
+      </div>
 
-      <section id="applications" className="panel">
-        <div className="section-heading compact">
-          <div>
-            <p className="eyebrow">Application tracking</p>
-            <h2>Your applications</h2>
-          </div>
+      {/* Applications */}
+      <div className="rounded-xl border bg-card p-6 flex flex-col gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Application tracking</p>
+          <h2 className="text-xl font-semibold text-foreground">Your applications</h2>
         </div>
 
-        <div className="mini-stats">
-          <div className="stat"><p className="label">Complete sets</p><p className="value">{summary.completeDocs}</p></div>
-          <div className="stat"><p className="label">Shortlisted</p><p className="value">{summary.shortlisted}</p></div>
-          <div className="stat"><p className="label">In progress</p><p className="value">{summary.pending}</p></div>
+        <div className="grid grid-cols-3 gap-4">
+          {[
+            { label: 'Complete sets', value: summary.completeDocs },
+            { label: 'Shortlisted', value: summary.shortlisted },
+            { label: 'In progress', value: summary.pending },
+          ].map(({ label, value }) => (
+            <div key={label} className="rounded-lg border bg-muted/30 p-4">
+              <p className="text-xs text-muted-foreground">{label}</p>
+              <p className="text-2xl font-bold text-foreground mt-1">{value}</p>
+            </div>
+          ))}
         </div>
 
-        {applications.loading && <p>Loading applications…</p>}
-        {applications.error  && <p style={{ color: '#b91c1c' }}>{applications.error}</p>}
+        {applications.loading && <p className="text-sm text-muted-foreground">Loading applications…</p>}
+        {applications.error && <p className="text-sm text-destructive">{applications.error}</p>}
 
         {deleteId !== null && (
-          <div className="confirm-banner">
-            <p>Withdraw application #{deleteId}? This cannot be undone.</p>
-            {deleteErr && <p className="form-error">{deleteErr}</p>}
-            <div className="form-actions">
-              <button type="button" className="btn-danger" onClick={() => void handleDelete(deleteId)}>Yes, withdraw</button>
-              <button type="button" className="btn-ghost" onClick={() => { setDeleteId(null); setDeleteErr('') }}>Cancel</button>
+          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 flex flex-col gap-3">
+            <p className="text-sm text-foreground">Withdraw application #{deleteId}? This cannot be undone.</p>
+            {deleteErr && <p className="text-sm text-destructive">{deleteErr}</p>}
+            <div className="flex gap-2">
+              <Button variant="destructive" size="sm" onClick={() => void handleDelete(deleteId)}>Yes, withdraw</Button>
+              <Button variant="outline" size="sm" onClick={() => { setDeleteId(null); setDeleteErr('') }}>Cancel</Button>
             </div>
           </div>
         )}
 
-        <div className="table-wrap">
-          <table>
+        <div className="rounded-lg border overflow-hidden">
+          <table className="w-full">
             <thead>
-              <tr>
-                <th>Scholarship</th>
-                <th>Status</th>
-                <th>Documents</th>
-                <th>Next step</th>
-                <th></th>
+              <tr className="border-b bg-muted/50">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Scholarship</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Documents</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wide">Next step</th>
+                <th className="px-4 py-3" />
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y">
               {(applications.data ?? []).map((item) => (
-                <tr key={item.id}>
-                  <td>{item.scholarshipTitle}</td>
-                  <td><StatusBadge label={item.status} /></td>
-                  <td>{item.submittedDocuments || (item.documentsComplete ? 'Uploaded' : 'Missing items')}</td>
-                  <td>{item.nextStep}</td>
-                  <td>
-                    <button type="button" className="btn-ghost btn-sm" onClick={() => openDocuments(item.id)}>
-                      Edit documents
-                    </button>
-                    <button type="button" className="btn-danger btn-sm" onClick={() => { setDeleteId(item.id); setShowForm(false) }}>
-                      Withdraw
-                    </button>
+                <tr key={item.id} className="hover:bg-muted/30 transition-colors">
+                  <td className="px-4 py-3 text-sm text-foreground">{item.scholarshipTitle}</td>
+                  <td className="px-4 py-3"><StatusBadge label={item.status} /></td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{item.submittedDocuments || (item.documentsComplete ? 'Uploaded' : 'Missing items')}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground">{item.nextStep}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-1.5 justify-end">
+                      <Button variant="ghost" size="sm" onClick={() => openDocuments(item.id)}>Edit docs</Button>
+                      <Button variant="destructive" size="sm" onClick={() => { setDeleteId(item.id); setShowForm(false) }}>Withdraw</Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -543,14 +443,14 @@ export function StudentDashboard() {
           </table>
         </div>
 
-        <div id="documents" ref={documentsRef}>
+        <div ref={documentsRef}>
           <DocumentPanel
-            applications={(applications.data ?? []).map((app) => ({ id: app.id, scholarshipTitle: app.scholarshipTitle }))}
+            applications={(applications.data ?? []).map((a) => ({ id: a.id, scholarshipTitle: a.scholarshipTitle }))}
             selectedApplicationId={selectedDocumentApplicationId}
             onUploaded={refresh}
           />
         </div>
-      </section>
+      </div>
     </div>
   )
 }

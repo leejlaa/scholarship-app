@@ -17,6 +17,12 @@ public sealed class DocumentService(
         if (dto.SizeBytes <= 0) throw new ArgumentException("No file received.");
         if (dto.SizeBytes > maxBytes) throw new ArgumentException("File exceeds 100 MB limit.");
 
+        // Only accept PDF files
+        var fileNameLower = dto.FileName?.ToLowerInvariant() ?? string.Empty;
+        var contentTypeLower = dto.ContentType?.ToLowerInvariant() ?? string.Empty;
+        var isPdf = contentTypeLower.Contains("pdf") || fileNameLower.EndsWith(".pdf");
+        if (!isPdf) throw new ArgumentException("Only PDF files are allowed.");
+
         var application = await applicationRepository.GetByIdAsync(applicationId, ct)
             ?? throw new KeyNotFoundException("Application not found.");
 

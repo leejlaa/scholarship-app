@@ -145,8 +145,19 @@ export function uploadApplicationDocument(applicationId: number, file: File, doc
   return apiPostForm<UploadDocumentResponse>(`/api/applications/${applicationId}/documents?${query.toString()}`, formData)
 }
 
-export function getDocumentDownloadUrl(storagePath: string) {
-  return `/api/documents/${storagePath.split('/').map(encodeURIComponent).join('/')}`
+export function getDocumentDownloadUrl(storagePath: string, inline = false) {
+  const base = `/api/documents/${storagePath.split('/').map(encodeURIComponent).join('/')}`
+  return inline ? `${base}?inline=true` : base
+}
+
+export async function openDocumentInNewTab(storagePath: string) {
+  const url = getDocumentDownloadUrl(storagePath, true)
+  const res = await fetch(url, { headers: { ...authHeaders() } })
+  if (!res.ok) throw new Error(`Document fetch failed: ${res.status}`)
+  const contentType = res.headers.get('content-type') ?? 'application/octet-stream'
+  const blob = await res.blob()
+  const objectUrl = URL.createObjectURL(new Blob([blob], { type: contentType }))
+  window.open(objectUrl, '_blank')
 }
 
 // ── Implementations ───────────────────────────────────────────────────────

@@ -70,11 +70,18 @@ public sealed class DocumentsController(
     // GET /api/documents/{*storagePath}  [any authenticated user]
     [HttpGet("documents/{**storagePath}")]
     [Authorize]
-    public async Task<IActionResult> Download(string storagePath, CancellationToken ct)
+    public async Task<IActionResult> Download(string storagePath, [FromQuery] bool inline = false, CancellationToken ct = default)
     {
         try
         {
             var result = await documentService.DownloadAsync(storagePath, BuildActorContext(), ct);
+            // If client requests inline viewing, set Content-Disposition to inline so browsers attempt to open the file.
+            if (inline)
+            {
+                Response.Headers["Content-Disposition"] = $"inline; filename=\"{result.FileName}\"";
+                return File(result.Content, result.ContentType);
+            }
+
             return File(result.Content, result.ContentType, result.FileName);
         }
         catch (FileNotFoundException) { return NotFound(new { error = "Document not found." }); }

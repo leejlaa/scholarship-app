@@ -9,9 +9,6 @@ import { Button } from '../components/ui/button'
 
 const EMPTY_FORM: ScholarshipWriteRequest = { title: '', audience: '', deadline: '', eligibility: '', amount: 0 }
 
-const inputCls = 'h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring disabled:opacity-50'
-const selectCls = 'h-9 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring'
-
 interface ScholarshipFormProps {
   initial?: ScholarshipWriteRequest
   reviewers: ReviewerSummary[]
@@ -42,42 +39,42 @@ function ScholarshipForm({ initial = EMPTY_FORM, reviewers, requireReviewer, onS
   }
 
   return (
-    <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-      <div className="grid grid-cols-2 gap-4">
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
-          Title
-          <input className={inputCls} value={form.title} onChange={(e) => set('title', e.target.value)} required />
-        </label>
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
-          Audience
-          <input className={inputCls} value={form.audience} onChange={(e) => set('audience', e.target.value)} required />
-        </label>
+    <form className="space-y-4" onSubmit={handleSubmit}>
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="form-group">
+          <label className="label">Title</label>
+          <input className="input" value={form.title} onChange={(e) => set('title', e.target.value)} required />
+        </div>
+        <div className="form-group">
+          <label className="label">Audience</label>
+          <input className="input" value={form.audience} onChange={(e) => set('audience', e.target.value)} required />
+        </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
-          Deadline
-          <input className={inputCls} type="date" value={form.deadline} onChange={(e) => set('deadline', e.target.value)} required />
-        </label>
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
-          Award amount (USD)
-          <input className={inputCls} type="number" min="0" step="100" value={form.amount} onChange={(e) => set('amount', parseFloat(e.target.value) || 0)} required />
-        </label>
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="form-group">
+          <label className="label">Deadline</label>
+          <input className="input" type="date" value={form.deadline} onChange={(e) => set('deadline', e.target.value)} required />
+        </div>
+        <div className="form-group">
+          <label className="label">Award amount (USD)</label>
+          <input className="input" type="number" min="0" step="100" value={form.amount} onChange={(e) => set('amount', parseFloat(e.target.value) || 0)} required />
+        </div>
       </div>
-      <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
-        Assigned reviewer
-        <select className={selectCls} value={form.reviewerId ?? ''} onChange={(e) => set('reviewerId', e.target.value)} required={requireReviewer}>
+      <div className="form-group">
+        <label className="label">Assigned reviewer</label>
+        <select className="select" value={form.reviewerId ?? ''} onChange={(e) => set('reviewerId', e.target.value)} required={requireReviewer}>
           <option value="">Select reviewer</option>
           {reviewers.map((r) => <option key={r.id} value={r.id}>{r.fullName} ({r.email})</option>)}
         </select>
-      </label>
-      <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
-        Eligibility criteria
-        <textarea className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring resize-none" rows={2} value={form.eligibility} onChange={(e) => set('eligibility', e.target.value)} required />
-      </label>
-      {err && <p className="text-sm text-destructive">{err}</p>}
+      </div>
+      <div className="form-group">
+        <label className="label">Eligibility criteria</label>
+        <textarea className="textarea" rows={2} value={form.eligibility} onChange={(e) => set('eligibility', e.target.value)} required />
+      </div>
+      {err && <div className="alert alert-error"><p className="text-sm">{err}</p></div>}
       <div className="flex gap-2">
-        <Button type="submit" disabled={busy}>{busy ? 'Saving…' : submitLabel}</Button>
-        <Button type="button" variant="outline" onClick={onCancel} disabled={busy}>Cancel</Button>
+        <Button type="submit" className="btn btn-primary flex-1" disabled={busy}>{busy ? 'Processing…' : submitLabel}</Button>
+        <Button type="button" className="btn btn-outline flex-1" onClick={onCancel} disabled={busy}>Cancel</Button>
       </div>
     </form>
   )
@@ -140,90 +137,102 @@ export function AdminDashboard() {
   const openScholarships = (scholarships.data ?? []).filter((s) => s.status.toLowerCase() === 'open').length
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* KPI row */}
-      <div className="grid grid-cols-2 gap-4 max-w-lg">
-        <StatCard label="Open scholarships" value={openScholarships} />
-        <StatCard label="Total scholarships" value={scholarships.data?.length ?? 0} />
+    <div className="space-y-6">
+      <div className="grid gap-4 max-w-md md:grid-cols-2">
+        <StatCard label="Open" value={openScholarships} />
+        <StatCard label="Total" value={scholarships.data?.length ?? 0} />
       </div>
 
-      {/* Scholarship management */}
-      <div className="rounded-xl border bg-card p-6 flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-foreground">Scholarship management</h2>
-          <Button onClick={() => setEditing('new')}>+ New scholarship</Button>
+      <div className="card">
+        <div className="card-header">
+          <div>
+            <h2 className="card-title">Manage scholarships</h2>
+            <p className="card-description">Create, edit, and assign reviewers</p>
+          </div>
+          <Button className="btn btn-primary" onClick={() => setEditing('new')}>+ New</Button>
         </div>
 
-        {editing === 'new' && (
-          <div className="rounded-lg border bg-muted/30 p-5">
-            <h3 className="font-semibold text-foreground mb-4">Create scholarship</h3>
-            <ScholarshipForm reviewers={reviewers} requireReviewer onSave={handleCreate} onCancel={() => setEditing(null)} submitLabel="Create" />
-          </div>
-        )}
-
-        {editing && editing !== 'new' && (
-          <div className="rounded-lg border bg-muted/30 p-5">
-            <h3 className="font-semibold text-foreground mb-4">Edit — {editing.title}</h3>
-            <ScholarshipForm initial={toWriteRequest(editing)} reviewers={reviewers} requireReviewer={false} onSave={handleUpdate} onCancel={() => setEditing(null)} submitLabel="Save changes" />
-          </div>
-        )}
-
-        {scholarships.loading && <p className="text-sm text-muted-foreground">Loading scholarships…</p>}
-        {scholarships.error && <p className="text-sm text-destructive">{scholarships.error}</p>}
-        {normalizedQuery.length > 0 && <p className="text-sm text-muted-foreground">Showing {filteredScholarships.length} scholarship(s) for "{searchQuery}".</p>}
-
-        {deleteId !== null && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 flex flex-col gap-3">
-            <p className="text-sm text-foreground">Delete scholarship #{deleteId}? This cannot be undone.</p>
-            {deleteErr && <p className="text-sm text-destructive">{deleteErr}</p>}
-            <div className="flex gap-2">
-              <Button variant="destructive" size="sm" onClick={() => void handleDelete(deleteId)}>Yes, delete</Button>
-              <Button variant="outline" size="sm" onClick={() => { setDeleteId(null); setDeleteErr('') }}>Cancel</Button>
+        <div className="card-content space-y-4">
+          {editing === 'new' && (
+            <div className="border rounded-lg bg-muted/30 p-5 space-y-4 slide-in">
+              <h3 className="font-semibold">Create new scholarship</h3>
+              <ScholarshipForm reviewers={reviewers} requireReviewer onSave={handleCreate} onCancel={() => setEditing(null)} submitLabel="Create" />
             </div>
-          </div>
-        )}
+          )}
 
-        {filteredScholarships.length === 0 && !scholarships.loading && (
-          <p className="text-sm text-muted-foreground">No scholarships match your search.</p>
-        )}
+          {editing && editing !== 'new' && (
+            <div className="border rounded-lg bg-muted/30 p-5 space-y-4 slide-in">
+              <h3 className="font-semibold">Edit — {editing.title}</h3>
+              <ScholarshipForm initial={toWriteRequest(editing)} reviewers={reviewers} requireReviewer={false} onSave={handleUpdate} onCancel={() => setEditing(null)} submitLabel="Save changes" />
+            </div>
+          )}
 
-        <div className="grid grid-cols-2 gap-4">
-          {filteredScholarships.map((item) => (
-            <article key={item.id} className="rounded-xl border bg-background p-5 flex flex-col gap-3">
-              <div className="flex items-start justify-between gap-2">
-                <h3 className="font-semibold text-foreground">{item.title}</h3>
-                <StatusBadge label={item.status} />
-              </div>
-              <p className="text-sm text-muted-foreground">{item.audience}</p>
-              <div className="text-sm text-foreground space-y-0.5">
-                <p><span className="font-medium">Deadline:</span> {formatDate(item.deadline)} · <span className="font-medium">Award:</span> {formatMoney(item.amount)}</p>
-                <p className="italic text-muted-foreground">{item.eligibility}</p>
-                <p><span className="font-medium">Reviewer:</span> {item.assignedReviewerName ?? 'Unassigned'}</p>
-              </div>
+          {scholarships.loading && <p className="text-sm text-muted-foreground text-center py-8">Loading scholarships…</p>}
+          {scholarships.error && <div className="alert alert-error"><p className="text-sm">{scholarships.error}</p></div>}
 
-              <div className="flex flex-col gap-1.5">
-                <p className="text-xs font-medium text-muted-foreground">Assign reviewer</p>
-                <div className="flex gap-2">
-                  <select
-                    className="flex-1 h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none focus:ring-2 focus:ring-ring"
-                    value={reviewerByScholarship[item.id] ?? item.assignedReviewerId ?? ''}
-                    onChange={(e) => setReviewerByScholarship((prev) => ({ ...prev, [item.id]: e.target.value }))}>
-                    <option value="">Unassigned</option>
-                    {reviewers.map((r) => <option key={r.id} value={r.id}>{r.fullName} ({r.email})</option>)}
-                  </select>
-                  <Button size="sm" disabled={assigningScholarshipId === item.id} onClick={() => void handleAssignReviewer(item)}>
-                    {assigningScholarshipId === item.id ? 'Assigning…' : 'Assign'}
-                  </Button>
-                </div>
-                {assignErr && <p className="text-xs text-destructive">{assignErr}</p>}
-              </div>
-
+          {deleteId !== null && (
+            <div className="alert alert-error space-y-3">
+              <p className="text-sm font-medium">Delete scholarship #{deleteId}? This cannot be undone.</p>
+              {deleteErr && <p className="text-sm">{deleteErr}</p>}
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => { setEditing(item); setDeleteId(null) }}>Edit</Button>
-                <Button variant="destructive" size="sm" onClick={() => { setDeleteId(item.id); setEditing(null) }}>Delete</Button>
+                <Button className="btn btn-destructive" onClick={() => void handleDelete(deleteId)}>Yes, delete</Button>
+                <Button className="btn btn-outline" onClick={() => { setDeleteId(null); setDeleteErr('') }}>Cancel</Button>
               </div>
-            </article>
-          ))}
+            </div>
+          )}
+
+          {filteredScholarships.length === 0 && !scholarships.loading && (
+            <p className="text-sm text-muted-foreground text-center py-8">No scholarships found.</p>
+          )}
+
+          {filteredScholarships.length > 0 && (
+            <div className="grid gap-4 md:grid-cols-2">
+              {filteredScholarships.map((item) => (
+                <div key={item.id} className="card">
+                  <div className="card-header">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="card-title truncate">{item.title}</h3>
+                      <p className="card-description">{item.audience}</p>
+                    </div>
+                    <StatusBadge label={item.status} />
+                  </div>
+                  <div className="card-content space-y-3">
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">Deadline</span>
+                        <p className="font-medium text-sm">{formatDate(item.deadline)}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Award</span>
+                        <p className="font-medium text-sm">{formatMoney(item.amount)}</p>
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{item.eligibility}</p>
+                    <div className="pt-3 border-t">
+                      <p className="text-xs font-medium text-muted-foreground mb-2">Reviewer</p>
+                      <div className="flex gap-2">
+                        <select
+                          className="select text-xs flex-1"
+                          value={reviewerByScholarship[item.id] ?? item.assignedReviewerId ?? ''}
+                          onChange={(e) => setReviewerByScholarship((prev) => ({ ...prev, [item.id]: e.target.value }))}>
+                          <option value="">Unassigned</option>
+                          {reviewers.map((r) => <option key={r.id} value={r.id}>{r.fullName}</option>)}
+                        </select>
+                        <Button className="btn btn-sm btn-primary" disabled={assigningScholarshipId === item.id} onClick={() => void handleAssignReviewer(item)}>
+                          {assigningScholarshipId === item.id ? '...' : 'Assign'}
+                        </Button>
+                      </div>
+                      {assignErr && <p className="text-xs text-destructive mt-1">{assignErr}</p>}
+                    </div>
+                  </div>
+                  <div className="card-footer">
+                    <Button className="btn btn-outline flex-1" onClick={() => { setEditing(item); setDeleteId(null) }}>Edit</Button>
+                    <Button className="btn btn-destructive flex-1" onClick={() => { setDeleteId(item.id); setEditing(null) }}>Delete</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

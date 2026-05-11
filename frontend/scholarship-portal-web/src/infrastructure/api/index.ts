@@ -16,6 +16,7 @@ import type {
   StudentProfile,
   ReviewerProfile as ReviewerProfileEntity,
   AdminProfile,
+  PortalNotification,
 } from '../../domain/entities'
 import type {
   IScholarshipRepository,
@@ -261,4 +262,8 @@ export function updateReviewerProfile(request: UpdateReviewerProfileRequest) {
 
 export function updateAdminProfile(request: UpdateAdminProfileRequest) {
   return apiPut<AdminProfile, UpdateAdminProfileRequest>('/api/profile/admin', request)
+}
+
+export function getNotifications() {
+  return apiGet<PortalNotification[]>('/api/notifications')
 }

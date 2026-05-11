@@ -11,6 +11,8 @@ import { LoginPage } from './presentation/pages/LoginPage'
 import { StudentProfilePage } from './presentation/pages/StudentProfilePage'
 import { ReviewerProfilePage } from './presentation/pages/ReviewerProfilePage'
 import { AdminProfilePage } from './presentation/pages/AdminProfilePage'
+import { StudentApplyPage } from './presentation/pages/StudentApplyPage'
+import { StudentManagePage } from './presentation/pages/StudentManagePage'
 
 export default function App() {
   const [auth, setAuth] = useState<AuthResponse | null>(() => getStoredAuth())
@@ -52,6 +54,28 @@ export default function App() {
           <ProtectedRoute auth={auth} allowed={['student']}>
             <PortalLayout auth={auth!} activeRole="student" onLogout={handleLogout} pageTitle="Profile">
               <StudentProfilePage />
+            </PortalLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/student/apply"
+        element={
+          <ProtectedRoute auth={auth} allowed={['student']}>
+            <PortalLayout auth={auth!} activeRole="student" onLogout={handleLogout} pageTitle="Apply">
+              <StudentApplyPage />
+            </PortalLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/student/application/:applicationId/documents"
+        element={
+          <ProtectedRoute auth={auth} allowed={['student']}>
+            <PortalLayout auth={auth!} activeRole="student" onLogout={handleLogout} pageTitle="Documents">
+              <StudentManagePage />
             </PortalLayout>
           </ProtectedRoute>
         }

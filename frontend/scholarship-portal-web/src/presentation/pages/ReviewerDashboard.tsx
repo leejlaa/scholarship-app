@@ -1,15 +1,14 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useReviewQueue, useApplications, useScholarships } from '../../application/hooks'
-import { StatusBadge } from '../components/shared'
+import { StatusBadge, StatCard } from '../components/shared'
 import { usePortalSearch } from '../components/PortalLayout'
-import { applicationApi, getStoredAuth, reviewApi } from '../../infrastructure/api'
+import { applicationApi, getStoredAuth, reviewApi, listApplicationDocuments, getDocumentDownloadUrl, openDocumentInNewTab } from '../../infrastructure/api'
 import type { ReviewCreateRequest, ReviewUpdateRequest } from '../../domain/repositories'
-import type { Review } from '../../domain/entities'
+import type { Review, ApplicationDocumentSummary } from '../../domain/entities'
+import { Button } from '../components/ui/button'
+import { FileText, Download, Paperclip } from 'lucide-react'
 
 const STAGES = ['Initial', 'Secondary', 'PanelDiscussion', 'Complete']
-const APPLICATION_STATUSES = ['Submitted', 'UnderReview', 'Shortlisted', 'Approved', 'Rejected']
-
-// ── Score form ────────────────────────────────────────────────────────────
 
 interface ReviewFormProps {
   applications: { id: number; scholarshipTitle: string; studentName: string }[]
@@ -29,59 +28,49 @@ function ReviewForm({ applications, initial, onSave, onCancel, mode }: ReviewFor
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setBusy(true)
-    setErr('')
+    setBusy(true); setErr('')
     try {
-      if (mode === 'create') {
-        await onSave({ applicationId, score, comment, stage } as ReviewCreateRequest)
-      } else {
-        await onSave({ reviewerName: '', score, comment, stage } as ReviewUpdateRequest)
-      }
+      if (mode === 'create') await onSave({ applicationId, score, comment, stage } as ReviewCreateRequest)
+      else await onSave({ reviewerName: '', score, comment, stage } as ReviewUpdateRequest)
     } catch (ex: unknown) {
       setErr(ex instanceof Error ? ex.message : 'Save failed')
-    } finally {
-      setBusy(false)
-    }
+    } finally { setBusy(false) }
   }
 
   return (
-    <form className="crud-form" onSubmit={handleSubmit}>
+    <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
       {mode === 'create' && (
-        <label>Application
-          <select value={applicationId} onChange={(e) => setApplicationId(Number(e.target.value))} required>
-            {applications.map((a) => (
-              <option key={a.id} value={a.id}>{a.studentName} — {a.scholarshipTitle}</option>
-            ))}
+        <div className="form-group">
+          <label className="label">Application</label>
+          <select className="select" value={applicationId} onChange={(e) => setApplicationId(Number(e.target.value))} required>
+            {applications.map((a) => <option key={a.id} value={a.id}>{a.studentName} — {a.scholarshipTitle}</option>)}
           </select>
-        </label>
+        </div>
       )}
-      <div className="form-row">
-        <label>Score (0–100)
-          <input type="number" min="0" max="100" value={score}
-            onChange={(e) => setScore(Number(e.target.value))} required />
-        </label>
-        <label>Stage
-          <select value={stage} onChange={(e) => setStage(e.target.value)}>
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="form-group">
+          <label className="label">Score (0–100)</label>
+          <input className="input" type="number" min="0" max="100" value={score} onChange={(e) => setScore(Number(e.target.value))} required />
+        </div>
+        <div className="form-group">
+          <label className="label">Stage</label>
+          <select className="select" value={stage} onChange={(e) => setStage(e.target.value)}>
             {STAGES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
-        </label>
+        </div>
       </div>
-      <label>Comment
-        <textarea rows={3} value={comment} onChange={(e) => setComment(e.target.value)}
-          placeholder="Evaluation notes…" required />
+      <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+        Comment
+        <textarea className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-ring resize-none" rows={3} value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Evaluation notes…" required />
       </label>
-      {err && <p className="form-error">{err}</p>}
-      <div className="form-actions">
-        <button type="submit" className="btn-primary" disabled={busy}>
-          {busy ? 'Saving…' : mode === 'create' ? 'Submit review' : 'Save changes'}
-        </button>
-        <button type="button" className="btn-ghost" onClick={onCancel} disabled={busy}>Cancel</button>
+      {err && <p className="text-sm text-destructive">{err}</p>}
+      <div className="flex gap-2">
+        <Button type="submit" disabled={busy}>{busy ? 'Saving…' : mode === 'create' ? 'Submit review' : 'Save changes'}</Button>
+        <Button type="button" variant="outline" onClick={onCancel} disabled={busy}>Cancel</Button>
       </div>
     </form>
   )
 }
-
-// ── Main dashboard ─────────────────────────────────────────────────────────
 
 export function ReviewerDashboard() {
   const [refreshKey, setRefreshKey] = useState(0)
@@ -89,11 +78,7 @@ export function ReviewerDashboard() {
   const scholarships = useScholarships(refreshKey)
   const queue = useReviewQueue(refreshKey)
   const applications = useApplications(applicationRefreshKey)
-
-  const refresh = useCallback(() => {
-    setRefreshKey((k) => k + 1)
-    setApplicationRefreshKey((k) => k + 1)
-  }, [])
+  const refresh = useCallback(() => { setRefreshKey((k) => k + 1); setApplicationRefreshKey((k) => k + 1) }, [])
 
   const [editing, setEditing] = useState<null | Review>(null)
   const [creatingForApplicationId, setCreatingForApplicationId] = useState<number | null>(null)
@@ -104,6 +89,8 @@ export function ReviewerDashboard() {
   const [statusFeedbackAppId, setStatusFeedbackAppId] = useState<number | null>(null)
   const [statusNotice, setStatusNotice] = useState('')
   const [statusErr, setStatusErr] = useState('')
+  const [selectedAppDocs, setSelectedAppDocs] = useState<Record<number, ApplicationDocumentSummary[]>>({})
+  const [loadingDocs, setLoadingDocs] = useState<Record<number, boolean>>({})
   const reviewFormRef = useRef<HTMLDivElement | null>(null)
 
   const { query: searchQuery } = usePortalSearch()
@@ -119,16 +106,10 @@ export function ReviewerDashboard() {
 
   const assignedScholarships = (scholarships.data ?? []).filter((s) =>
     (s.assignedReviewerEmail ?? '').toLowerCase() === (currentAuth?.email ?? '').toLowerCase())
-
   const assignedTitles = new Set(assignedScholarships.map((s) => s.title))
-
   const appOptions = (applications.data ?? [])
     .filter((a) => assignedTitles.has(a.scholarshipTitle))
-    .map((a) => ({
-    id: a.id,
-    scholarshipTitle: a.scholarshipTitle,
-    studentName: a.studentName,
-    }))
+    .map((a) => ({ id: a.id, scholarshipTitle: a.scholarshipTitle, studentName: a.studentName }))
 
   const reviewedByMeApplicationIds = new Set((queue.data ?? []).filter((r) => r.isMine).map((r) => r.applicationId))
   const unreviewedSubmissions = appOptions.filter((app) => !reviewedByMeApplicationIds.has(app.id))
@@ -136,123 +117,97 @@ export function ReviewerDashboard() {
   const averageScore = (queue.data?.length ?? 0) > 0
     ? Math.round((queue.data ?? []).reduce((sum, item) => sum + item.recommendedScore, 0) / (queue.data?.length ?? 1))
     : 0
-
   const completeStageCount = (queue.data ?? []).filter((item) => item.stage === 'Complete').length
 
   useEffect(() => {
     if (creatingForApplicationId === null) return
-
-    window.requestAnimationFrame(() => {
-      reviewFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
+    window.requestAnimationFrame(() => reviewFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
   }, [creatingForApplicationId])
 
-  function openCreateForm(applicationId: number) {
+  async function loadDocumentsForApp(appId: number) {
+    if (selectedAppDocs[appId]) return
+    setLoadingDocs((prev) => ({ ...prev, [appId]: true }))
+    try {
+      const docs = await listApplicationDocuments(appId)
+      setSelectedAppDocs((prev) => ({ ...prev, [appId]: docs }))
+    } catch (e) {
+      console.error('Failed to load documents:', e)
+    } finally {
+      setLoadingDocs((prev) => ({ ...prev, [appId]: false }))
+    }
+  }
+
+  function openCreateForm(applicationId: number) { 
     setEditing(null)
     setCreatingForApplicationId(applicationId)
+    loadDocumentsForApp(applicationId)
   }
 
   async function handleCreate(req: ReviewCreateRequest | ReviewUpdateRequest) {
     await reviewApi.create(req as ReviewCreateRequest)
-    setCreatingForApplicationId(null)
-    setEditing(null)
-    refresh()
+    setCreatingForApplicationId(null); setEditing(null); refresh()
   }
-
   async function handleUpdate(req: ReviewCreateRequest | ReviewUpdateRequest) {
     if (!editing) return
     await reviewApi.update(editing.id, req as ReviewUpdateRequest)
-    setEditing(null)
-    refresh()
+    setEditing(null); refresh()
   }
-
   async function handleDelete(id: number) {
     setDeleteErr('')
-    try {
-      await reviewApi.remove(id)
-      setDeleteId(null)
-      refresh()
-    } catch (ex: unknown) {
-      setDeleteErr(ex instanceof Error ? ex.message : 'Delete failed')
-    }
+    try { await reviewApi.remove(id); setDeleteId(null); refresh() }
+    catch (ex: unknown) { setDeleteErr(ex instanceof Error ? ex.message : 'Delete failed') }
   }
 
   function resolveCurrentApplicationStatus(applicationId: number) {
-    const current = (applications.data ?? []).find((app) => app.id === applicationId)?.status
-    return current ?? 'Submitted'
+    return (applications.data ?? []).find((a) => a.id === applicationId)?.status ?? 'Submitted'
   }
 
   async function handleApplicationStatusUpdate(applicationId: number, status: string) {
-    setStatusUpdateAppId(applicationId)
-    setStatusFeedbackAppId(applicationId)
-    setStatusNotice('')
-    setStatusErr('')
-
+    setStatusUpdateAppId(applicationId); setStatusFeedbackAppId(applicationId); setStatusNotice(''); setStatusErr('')
     try {
       await applicationApi.update(applicationId, { status })
       setStatusNotice(`Application status updated to ${status}.`)
       refresh()
     } catch (ex: unknown) {
       setStatusErr(ex instanceof Error ? ex.message : 'Status update failed')
-    } finally {
-      setStatusUpdateAppId(null)
-    }
+    } finally { setStatusUpdateAppId(null) }
   }
 
   return (
-    <div className="content-grid reviewer-dashboard">
-      <section className="reviewer-kpi-grid">
-        <article className="reviewer-kpi-card">
-          <p>Queue items</p>
-          <strong>{queue.data?.length ?? 0}</strong>
-        </article>
-        <article className="reviewer-kpi-card">
-          <p>Average score</p>
-          <strong>{averageScore}</strong>
-        </article>
-        <article className="reviewer-kpi-card">
-          <p>Completed stage</p>
-          <strong>{completeStageCount}</strong>
-        </article>
-      </section>
+    <div className="flex flex-col gap-6">
+      {/* KPI row */}
+      <div className="grid grid-cols-3 gap-4">
+        <StatCard label="Queue items" value={queue.data?.length ?? 0} />
+        <StatCard label="Average score" value={averageScore} />
+        <StatCard label="Completed stage" value={completeStageCount} />
+      </div>
 
-      <div className="content-grid two-columns reviewer-workspace">
-        <section id="queue" className="panel">
-        <div className="section-heading compact">
-          <div>
-            <h2>Reviewer queue</h2>
+      {/* Unreviewed submissions */}
+      {unreviewedSubmissions.length > 0 && (
+        <div className="rounded-xl border bg-card p-6 flex flex-col gap-4">
+          <h2 className="text-lg font-semibold text-foreground">Unreviewed submissions</h2>
+          <div className="grid grid-cols-2 gap-4">
+            {unreviewedSubmissions.map((submission) => (
+              <article key={submission.id} className="rounded-xl border bg-background p-4 flex flex-col gap-3">
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="font-semibold text-foreground">{submission.studentName}</h3>
+                  <StatusBadge label={resolveCurrentApplicationStatus(submission.id)} />
+                </div>
+                <p className="text-sm font-medium text-muted-foreground">{submission.scholarshipTitle}</p>
+                <Button size="sm" onClick={() => openCreateForm(submission.id)}>Review submission</Button>
+              </article>
+            ))}
           </div>
         </div>
+      )}
 
-        <div className="form-card">
-          <h3>Unreviewed submissions</h3>
-          {unreviewedSubmissions.length === 0 && <p className="helper-text">No unreviewed submissions assigned to you.</p>}
-          {unreviewedSubmissions.length > 0 && (
-            <div className="card-list reviewer-queue-list">
-              {unreviewedSubmissions.map((submission) => (
-                <article key={submission.id} className="info-card reviewer-queue-card">
-                  <div className="card-topline">
-                    <h3>{submission.studentName}</h3>
-                    <StatusBadge label={resolveCurrentApplicationStatus(submission.id)} />
-                  </div>
-                  <p><strong>{submission.scholarshipTitle}</strong></p>
-                  <div className="card-actions">
-                    <button
-                      type="button"
-                      className="btn-primary btn-sm"
-                      onClick={() => openCreateForm(submission.id)}>
-                      Review submission
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </div>
+      {/* Review queue */}
+      <div className="rounded-xl border bg-card p-6 flex flex-col gap-4">
+        <h2 className="text-lg font-semibold text-foreground">Reviewer queue</h2>
 
         {creatingForApplicationId !== null && (
-          <div ref={reviewFormRef} id="review-form" className="form-card">
-            <h3>Submit review</h3>
+          <div ref={reviewFormRef} className="rounded-lg border bg-muted/30 p-5 animate-slide-in-down">
+            <h3 className="font-semibold text-foreground mb-4">Submit review</h3>
             <ReviewForm
               applications={appOptions.filter((a) => a.id === creatingForApplicationId)}
               initial={{ applicationId: creatingForApplicationId, score: 70, comment: '', stage: 'Initial' }}
@@ -260,11 +215,48 @@ export function ReviewerDashboard() {
               onCancel={() => setCreatingForApplicationId(null)}
               mode="create"
             />
+
+            {/* Document Section */}
+            {(selectedAppDocs[creatingForApplicationId]?.length ?? 0) > 0 && (
+              <div className="document-section mt-6">
+                <div className="document-section-title">
+                  <Paperclip size={18} />
+                  <span>Supporting Documents</span>
+                </div>
+                <div className="document-list">
+                  {selectedAppDocs[creatingForApplicationId]?.map((doc) => (
+                    <div key={doc.id} className="document-item">
+                      <div className="document-info">
+                        <div className="document-icon">
+                          <FileText size={16} />
+                        </div>
+                        <div className="document-details">
+                          <h4>{doc.fileName}</h4>
+                          <span className="document-type">{doc.documentType}</span>
+                        </div>
+                      </div>
+                        <div className="document-actions flex items-center gap-2">
+                          <button onClick={() => void openDocumentInNewTab(doc.storagePath)} className="btn btn-sm btn-outline">View</button>
+                          <a href={getDocumentDownloadUrl(doc.storagePath)} download className="btn btn-sm">
+                            <Download size={14} />
+                            Download
+                          </a>
+                        </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {loadingDocs[creatingForApplicationId] && (
+              <p className="text-sm text-muted-foreground mt-4">Loading documents...</p>
+            )}
           </div>
         )}
+
         {editing && (
-          <div className="form-card">
-            <h3>Edit review — {editing.applicantName}</h3>
+          <div className="rounded-lg border bg-muted/30 p-5">
+            <h3 className="font-semibold text-foreground mb-4">Edit review — {editing.applicantName}</h3>
             <ReviewForm
               applications={appOptions}
               initial={{ applicationId: editing.applicationId, score: editing.recommendedScore, comment: editing.comment, stage: editing.stage }}
@@ -272,88 +264,120 @@ export function ReviewerDashboard() {
               onCancel={() => setEditing(null)}
               mode="edit"
             />
+
+            {/* Document Section for editing */}
+            {(selectedAppDocs[editing.applicationId]?.length ?? 0) > 0 && (
+              <div className="document-section mt-6">
+                <div className="document-section-title">
+                  <Paperclip size={18} />
+                  <span>Supporting Documents</span>
+                </div>
+                <div className="document-list">
+                  {selectedAppDocs[editing.applicationId]?.map((doc) => (
+                    <div key={doc.id} className="document-item">
+                      <div className="document-info">
+                        <div className="document-icon">
+                          <FileText size={16} />
+                        </div>
+                        <div className="document-details">
+                          <h4>{doc.fileName}</h4>
+                          <span className="document-type">{doc.documentType}</span>
+                        </div>
+                      </div>
+                        <div className="document-actions flex items-center gap-2">
+                          <button onClick={() => void openDocumentInNewTab(doc.storagePath)} className="btn btn-sm btn-outline">View</button>
+                          <a href={getDocumentDownloadUrl(doc.storagePath)} download className="btn btn-sm">
+                            <Download size={14} />
+                            Download
+                          </a>
+                        </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {loadingDocs[editing.applicationId] && (
+              <p className="text-sm text-muted-foreground mt-4">Loading documents...</p>
+            )}
           </div>
         )}
 
-        {queue.loading && <p>Loading review queue…</p>}
-        {queue.error   && <p style={{ color: '#b91c1c' }}>{queue.error}</p>}
-
-        {normalizedQuery.length > 0 && (
-          <p className="helper-text">Showing {filteredQueue.length} review(s) for "{searchQuery}".</p>
-        )}
-
         {deleteId !== null && (
-          <div className="confirm-banner">
-            <p>Delete review #{deleteId}?</p>
-            {deleteErr && <p className="form-error">{deleteErr}</p>}
-            <div className="form-actions">
-              <button type="button" className="btn-danger" onClick={() => void handleDelete(deleteId)}>Yes, delete</button>
-              <button type="button" className="btn-ghost" onClick={() => { setDeleteId(null); setDeleteErr('') }}>Cancel</button>
+          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 flex flex-col gap-3">
+            <p className="text-sm text-foreground">Delete review #{deleteId}?</p>
+            {deleteErr && <p className="text-sm text-destructive">{deleteErr}</p>}
+            <div className="flex gap-2">
+              <Button variant="destructive" size="sm" onClick={() => void handleDelete(deleteId)}>Yes, delete</Button>
+              <Button variant="outline" size="sm" onClick={() => { setDeleteId(null); setDeleteErr('') }}>Cancel</Button>
             </div>
           </div>
         )}
 
-        <div className="card-list reviewer-queue-list">
-          {filteredQueue.length === 0 && !queue.loading && (
-            <p className="helper-text">{normalizedQuery.length > 0 ? 'No reviews match your search.' : 'No reviews yet.'}</p>
-          )}
+        {queue.loading && <p className="text-sm text-muted-foreground">Loading review queue…</p>}
+        {queue.error && <p className="text-sm text-destructive">{queue.error}</p>}
+        {normalizedQuery.length > 0 && <p className="text-sm text-muted-foreground">Showing {filteredQueue.length} review(s) for "{searchQuery}".</p>}
+
+        {filteredQueue.length === 0 && !queue.loading && (
+          <p className="text-sm text-muted-foreground">{normalizedQuery.length > 0 ? 'No reviews match your search.' : 'No reviews yet.'}</p>
+        )}
+
+        <div className="grid grid-cols-2 gap-4">
           {filteredQueue.map((item) => (
-            <article key={item.id} className="info-card reviewer-queue-card">
-              <div className="card-topline">
-                <h3>{item.applicantName}</h3>
-                <span className="score-chip">{item.recommendedScore}/100</span>
+            <article key={item.id} className="rounded-xl border bg-background p-5 flex flex-col gap-3 hover:shadow-md transition-shadow">
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="font-semibold text-foreground">{item.applicantName}</h3>
+                <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
+                  {item.recommendedScore}/100
+                </span>
               </div>
-              <p>
-                <strong>{item.isMine ? 'My review' : 'Other reviewer'}</strong>
-                {' · '}
-                {item.reviewerName}
+              <p className="text-sm text-muted-foreground">
+                <strong className="text-foreground">{item.isMine ? 'My review' : 'Other reviewer'}</strong> · {item.reviewerName}
               </p>
-              <p><strong>{item.scholarshipTitle}</strong></p>
-              <p>{item.comment}</p>
-              <p>
-                <strong>Stage: </strong>
+              <p className="text-sm font-medium text-foreground">{item.scholarshipTitle}</p>
+              <p className="text-sm text-muted-foreground line-clamp-2">{item.comment}</p>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-muted-foreground">Stage:</span>
                 <StatusBadge label={item.stage} />
-              </p>
-              <div className="status-update-row">
-                <label className="status-update-label">Application status</label>
-                <div className="status-update-controls">
+              </div>
+
+              <div className="flex flex-col gap-1.5 pt-2 border-t border-border">
+                <p className="text-xs font-medium text-muted-foreground">Application status</p>
+                <div className="flex gap-2">
                   <select
+                    className="flex-1 h-8 rounded-md border border-input bg-background px-2 text-xs text-foreground outline-none focus:ring-2 focus:ring-ring"
                     value={statusByApplication[item.applicationId] ?? resolveCurrentApplicationStatus(item.applicationId)}
                     onChange={(e) => setStatusByApplication((prev) => ({ ...prev, [item.applicationId]: e.target.value }))}>
-                    {APPLICATION_STATUSES.map((status) => (
-                      <option key={status} value={status}>{status}</option>
-                    ))}
+                    <option value="Submitted">Submitted</option>
+                    <option value="UnderReview">Under Review</option>
+                    <option value="Shortlisted">Shortlisted</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Rejected">Rejected</option>
                   </select>
-                  <button
-                    type="button"
-                    className="btn-primary btn-sm"
+                  <Button
+                    size="sm"
                     disabled={statusUpdateAppId === item.applicationId}
                     onClick={() => void handleApplicationStatusUpdate(
                       item.applicationId,
                       statusByApplication[item.applicationId] ?? resolveCurrentApplicationStatus(item.applicationId),
                     )}>
-                    {statusUpdateAppId === item.applicationId ? 'Updating…' : 'Update status'}
-                  </button>
+                    {statusUpdateAppId === item.applicationId ? 'Updating…' : 'Update'}
+                  </Button>
                 </div>
+                {statusFeedbackAppId === item.applicationId && statusNotice && <p className="text-xs text-green-700">{statusNotice}</p>}
+                {statusFeedbackAppId === item.applicationId && statusErr && <p className="text-xs text-destructive">{statusErr}</p>}
               </div>
-              {statusFeedbackAppId === item.applicationId && statusNotice && <p className="helper-text success-text">{statusNotice}</p>}
-              {statusFeedbackAppId === item.applicationId && statusErr && <p className="form-error">{statusErr}</p>}
-              <div className="card-actions">
-                {item.isMine && (
-                  <>
-                    <button type="button" className="btn-ghost btn-sm"
-                      onClick={() => { setEditing(item); setDeleteId(null) }}>Edit</button>
-                    <button type="button" className="btn-danger btn-sm"
-                      onClick={() => { setDeleteId(item.id); setEditing(null) }}>Delete</button>
-                  </>
-                )}
-              </div>
+
+              {item.isMine && (
+                <div className="flex gap-2 pt-2 border-t border-border">
+                  <Button variant="outline" size="sm" onClick={() => { setEditing(item); setDeleteId(null); void loadDocumentsForApp(item.applicationId); }}>Edit</Button>
+                  <Button variant="destructive" size="sm" onClick={() => { setDeleteId(item.id); setEditing(null) }}>Delete</Button>
+                </div>
+              )}
             </article>
           ))}
         </div>
-        </section>
       </div>
     </div>
   )
 }
-

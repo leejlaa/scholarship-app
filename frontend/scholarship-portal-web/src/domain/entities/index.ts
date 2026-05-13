@@ -63,6 +63,14 @@ export interface WorkflowStep {
   detail: string
 }
 
+export interface PortalNotification {
+  id: number
+  title: string
+  message: string
+  link: string
+  type: string
+}
+
 export interface PortalOverview {
   totalStudents: number
   totalOpenScholarships: number

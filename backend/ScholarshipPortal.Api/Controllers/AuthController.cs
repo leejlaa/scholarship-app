@@ -44,18 +44,18 @@ public sealed class AuthController(
     [HttpGet("me")]
     public async Task<IActionResult> Me(CancellationToken ct)
     {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(userId))
-        {
-            return Unauthorized(new
-            {
-                error = "No portal account is linked to this Microsoft sign-in. Register first or contact an administrator."
-            });
-        }
+        // Azure AD NameIdentifier is the OID, not the portal user ID — match by email instead.
+        var email = User.FindFirstValue("preferred_username")
+                 ?? User.FindFirstValue(ClaimTypes.Email)
+                 ?? User.FindFirstValue("email")
+                 ?? User.FindFirstValue(ClaimTypes.Upn);
 
-        var user = await userManager.FindByIdAsync(userId);
+        if (string.IsNullOrEmpty(email))
+            return Unauthorized(new { error = "No email claim found in token. Register first or contact an administrator." });
+
+        var user = await userManager.FindByEmailAsync(email);
         if (user is null)
-            return Unauthorized(new { error = "Portal account not found." });
+            return Unauthorized(new { error = "No portal account is linked to this Microsoft sign-in. Register first or contact an administrator." });
 
         var roles = await userManager.GetRolesAsync(user);
         var role = roles.FirstOrDefault() ?? "Student";

@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from 'react'
 import { Bell, ClipboardCheck, Compass, LayoutDashboard, LogOut, Search, Upload, X } from 'lucide-react'
-import { NavLink, Navigate, useNavigate } from 'react-router-dom'
+import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { usePortalOverview } from '../../application/hooks'
 import type { AuthResponse, PortalNotification } from '../../domain/entities'
 import { cn } from '../../lib/utils'
@@ -65,6 +65,30 @@ export function normaliseRole(role: string): Role {
 
 export function defaultRouteForRole(role: Role) {
   return role === 'admin' ? '/admin' : role === 'reviewer' ? '/reviewer' : '/student'
+}
+
+function pageTitleForPath(role: Role, pathname: string): string {
+  if (pathname.includes('/profile')) return 'Profile'
+  if (role === 'student' && pathname.includes('/apply')) return 'Apply'
+  if (role === 'student' && pathname.includes('/documents')) return 'Documents'
+  return 'Dashboard'
+}
+
+interface RolePortalLayoutProps {
+  auth: AuthResponse
+  activeRole: Role
+  onLogout: () => void
+}
+
+/** Shared shell for a role; child routes render in the Outlet. */
+export function RolePortalLayout({ auth, activeRole, onLogout }: RolePortalLayoutProps) {
+  const { pathname } = useLocation()
+  const pageTitle = pageTitleForPath(activeRole, pathname)
+  return (
+    <PortalLayout auth={auth} activeRole={activeRole} onLogout={onLogout} pageTitle={pageTitle}>
+      <Outlet />
+    </PortalLayout>
+  )
 }
 
 interface ProtectedRouteProps {
@@ -178,7 +202,7 @@ export function PortalLayout({ auth, activeRole, onLogout, pageTitle = 'Dashboar
                 <NavLink
                   key={link.to}
                   to={link.to}
-                  end
+                  end={link.to === defaultRouteForRole(activeRole)}
                   className={({ isActive }) =>
                     cn(
                       'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',

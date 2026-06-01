@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { Eye, EyeOff, ArrowRight } from 'lucide-react'
-import { loginUser, registerUser } from '../../application/useCases'
-import type { AuthResponse } from '../../domain/entities'
+import { registerUser } from '../../application/useCases'
 import { authApi } from '../../infrastructure/api'
+import { signInWithMicrosoft } from '../../infrastructure/auth/azureAuth'
 import { Button } from '../components/ui/button'
 
-type Props = { onAuthenticated: (auth: AuthResponse) => void }
+type Props = {
+  authError?: string | null
+  onDismissAuthError?: () => void
+}
 
 const Field = ({ label, type = 'text', value, onChange, placeholder, required = false }: any) => (
   <label className="form-group">
@@ -21,7 +24,7 @@ const Field = ({ label, type = 'text', value, onChange, placeholder, required = 
   </label>
 )
 
-export function LoginPage({ onAuthenticated }: Props) {
+export function LoginPage({ authError, onDismissAuthError }: Props) {
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [showPassword, setShowPassword] = useState(false)
   const [fullName, setFullName] = useState('')
@@ -48,15 +51,17 @@ export function LoginPage({ onAuthenticated }: Props) {
   const [isAvailable, setIsAvailable] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    if (mode === 'login') return
+
     setBusy(true)
     setError(null)
+    setSuccess(null)
     try {
-      const auth = mode === 'login'
-        ? await loginUser(authApi)({ email, password })
-        : await registerUser(authApi)({
+      await registerUser(authApi)({
             fullName, email, password, role,
             studentNumber: studentNumber || undefined,
             faculty: faculty || undefined,
@@ -77,7 +82,8 @@ export function LoginPage({ onAuthenticated }: Props) {
             maxActiveReviews: maxActiveReviews ? Number(maxActiveReviews) : undefined,
             isAvailable,
           })
-      onAuthenticated(auth)
+      setMode('login')
+      setSuccess('Account created. Sign in with Microsoft using the same email address.')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentication failed')
     } finally {
@@ -86,12 +92,12 @@ export function LoginPage({ onAuthenticated }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="card border-0 shadow-lg">
+    <div className="min-h-screen auth-page flex items-center justify-center p-4 sm:p-5">
+      <div className={`w-full ${mode === 'register' ? 'max-w-3xl' : 'max-w-md'}`}>
+        <div className={`card border-0 shadow-lg ${mode === 'register' ? 'auth-register-compact' : ''}`}>
           <div className="card-header border-0 pb-0">
             <div>
-              <div className="flex items-center gap-3 mb-4">
+              <div className={`flex items-center gap-3 ${mode === 'register' ? 'mb-3' : 'mb-4'}`}>
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
                   <img src="/ius-logo.png" alt="IUS" className="w-full h-full object-contain p-1" />
                 </div>
@@ -103,9 +109,9 @@ export function LoginPage({ onAuthenticated }: Props) {
           </div>
 
           <div className="card-content">
-            <div className="flex gap-2 mb-6">
+            <div className={`flex gap-2 ${mode === 'register' ? 'mb-4' : 'mb-6'}`}>
               <button
-                onClick={() => setMode('login')}
+                onClick={() => { setMode('login'); setSuccess(null); setError(null) }}
                 className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors text-sm ${
                   mode === 'login'
                     ? 'bg-primary text-primary-foreground'
@@ -114,7 +120,7 @@ export function LoginPage({ onAuthenticated }: Props) {
                 Sign in
               </button>
               <button
-                onClick={() => setMode('register')}
+                onClick={() => { setMode('register'); setSuccess(null); setError(null) }}
                 className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors text-sm ${
                   mode === 'register'
                     ? 'bg-primary text-primary-foreground'
@@ -124,139 +130,196 @@ export function LoginPage({ onAuthenticated }: Props) {
               </button>
             </div>
 
-            <form className="space-y-4" onSubmit={handleSubmit}>
-              {mode === 'register' && (
-                <Field label="Full name" value={fullName} onChange={(e: any) => setFullName(e.target.value)} placeholder="John Doe" required />
-              )}
+            {mode === 'login' ? (
+              <div className="space-y-4">
+                {success && (
+                  <div className="alert alert-success">
+                    <p className="text-sm font-medium">{success}</p>
+                  </div>
+                )}
+                {authError && (
+                  <div className="alert alert-error">
+                    <p className="text-sm font-medium">{authError}</p>
+                    {onDismissAuthError && (
+                      <button type="button" className="text-xs underline mt-1" onClick={onDismissAuthError}>
+                        Dismiss
+                      </button>
+                    )}
+                  </div>
+                )}
+                <p className="text-sm text-muted-foreground">
+                  Sign in with your university Microsoft account. Use the same email you used when registering in this portal.
+                </p>
+                <Button type="button" className="w-full btn-primary" onClick={() => signInWithMicrosoft()}>
+                  Sign in with Microsoft
+                </Button>
+                {error && (
+                  <div className="alert alert-error">
+                    <p className="text-sm font-medium">{error}</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+            <form onSubmit={handleSubmit}>
+              <div className="auth-register-grid">
+                <section>
+                  <p className="auth-register-section-title">Account</p>
+                  <div className="auth-register-fields">
+                    <Field label="Full name" value={fullName} onChange={(e: any) => setFullName(e.target.value)} placeholder="John Doe" required />
+                    <Field label="Email" type="email" value={email} onChange={(e: any) => setEmail(e.target.value)} placeholder="you@example.com" required />
+                    <label className="form-group">
+                      <span className="label">Password</span>
+                      <div className="relative">
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          className="input"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="••••••••"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </label>
+                    <label className="form-group">
+                      <span className="label">Role</span>
+                      <select className="select" value={role} onChange={(e) => setRole(e.target.value)} required>
+                        <option value="Student">Student</option>
+                        <option value="Reviewer">Reviewer</option>
+                        <option value="Admin">Admin</option>
+                      </select>
+                    </label>
+                  </div>
+                </section>
 
-              <Field label="Email" type="email" value={email} onChange={(e: any) => setEmail(e.target.value)} placeholder="you@example.com" required />
+                <section>
+                  <p className="auth-register-section-title">
+                    {role === 'Student' ? 'Student profile' : role === 'Reviewer' ? 'Reviewer profile' : 'Admin profile'}
+                  </p>
+                  <div className="auth-register-fields">
+                    {role === 'Student' && (
+                      <>
+                        <div className="auth-register-row">
+                          <Field label="Student #" value={studentNumber} onChange={(e: any) => setStudentNumber(e.target.value)} />
+                          <Field label="Faculty" value={faculty} onChange={(e: any) => setFaculty(e.target.value)} />
+                        </div>
+                        <div className="auth-register-row">
+                          <Field label="Department" value={department} onChange={(e: any) => setDepartment(e.target.value)} />
+                          <Field label="Program" value={program} onChange={(e: any) => setProgram(e.target.value)} />
+                        </div>
+                        <div className="auth-register-row">
+                          <Field label="Year" type="number" value={currentYear} onChange={(e: any) => setCurrentYear(e.target.value)} />
+                          <Field label="GPA" type="number" value={gpa} onChange={(e: any) => setGpa(e.target.value)} />
+                        </div>
+                        <div className="auth-register-row">
+                          <Field label="DOB" type="date" value={dateOfBirth} onChange={(e: any) => setDateOfBirth(e.target.value)} />
+                          <Field label="Nationality" value={nationality} onChange={(e: any) => setNationality(e.target.value)} />
+                        </div>
+                        <Field label="Address" value={address} onChange={(e: any) => setAddress(e.target.value)} />
+                        <label className="form-group">
+                          <span className="label">Statement</span>
+                          <textarea className="textarea" rows={2} value={personalStatement} onChange={(e) => setPersonalStatement(e.target.value)} />
+                        </label>
+                      </>
+                    )}
 
-              <label className="form-group">
-                <span className="label">Password</span>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    className="input"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-              </label>
+                    {role === 'Reviewer' && (
+                      <>
+                        <div className="auth-register-row">
+                          <Field label="Staff #" value={staffNumber} onChange={(e: any) => setStaffNumber(e.target.value)} />
+                          <Field label="Department" value={department} onChange={(e: any) => setDepartment(e.target.value)} />
+                        </div>
+                        <div className="auth-register-row">
+                          <Field label="Title" value={title} onChange={(e: any) => setTitle(e.target.value)} />
+                          <Field label="Office" value={officeLocation} onChange={(e: any) => setOfficeLocation(e.target.value)} />
+                        </div>
+                        <div className="auth-register-row">
+                          <Field label="Phone" value={phoneNumber} onChange={(e: any) => setPhoneNumber(e.target.value)} />
+                          <Field label="Max reviews" type="number" value={maxActiveReviews} onChange={(e: any) => setMaxActiveReviews(e.target.value)} />
+                        </div>
+                        <label className="form-group">
+                          <span className="label">Available</span>
+                          <select className="select" value={String(isAvailable)} onChange={(e) => setIsAvailable(e.target.value === 'true')}>
+                            <option value="true">Yes</option>
+                            <option value="false">No</option>
+                          </select>
+                        </label>
+                        <label className="form-group">
+                          <span className="label">Expertise</span>
+                          <textarea className="textarea" rows={2} value={expertiseAreas} onChange={(e) => setExpertiseAreas(e.target.value)} />
+                        </label>
+                        <label className="form-group">
+                          <span className="label">Bio</span>
+                          <textarea className="textarea" rows={2} value={bio} onChange={(e) => setBio(e.target.value)} />
+                        </label>
+                      </>
+                    )}
 
-              {mode === 'register' && (
-                <>
-                  <label className="form-group">
-                    <span className="label">Role</span>
-                    <select className="select" value={role} onChange={(e) => setRole(e.target.value)} required>
-                      <option value="Student">Student</option>
-                      <option value="Reviewer">Reviewer</option>
-                      <option value="Admin">Admin</option>
-                    </select>
-                  </label>
+                    {role === 'Admin' && (
+                      <>
+                        <div className="auth-register-row">
+                          <Field label="Department" value={department} onChange={(e: any) => setDepartment(e.target.value)} />
+                          <Field label="Title" value={title} onChange={(e: any) => setTitle(e.target.value)} />
+                        </div>
+                        <div className="auth-register-row">
+                          <Field label="Office" value={officeLocation} onChange={(e: any) => setOfficeLocation(e.target.value)} />
+                          <Field label="Phone" value={phoneNumber} onChange={(e: any) => setPhoneNumber(e.target.value)} />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </section>
+              </div>
 
-                  {role === 'Student' && (
-                    <>
-                      <div className="grid grid-cols-2 gap-3">
-                        <Field label="Student #" value={studentNumber} onChange={(e: any) => setStudentNumber(e.target.value)} />
-                        <Field label="Faculty" value={faculty} onChange={(e: any) => setFaculty(e.target.value)} />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <Field label="Department" value={department} onChange={(e: any) => setDepartment(e.target.value)} />
-                        <Field label="Program" value={program} onChange={(e: any) => setProgram(e.target.value)} />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <Field label="Year" type="number" value={currentYear} onChange={(e: any) => setCurrentYear(e.target.value)} />
-                        <Field label="GPA" type="number" value={gpa} onChange={(e: any) => setGpa(e.target.value)} />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <Field label="DOB" type="date" value={dateOfBirth} onChange={(e: any) => setDateOfBirth(e.target.value)} />
-                        <Field label="Nationality" value={nationality} onChange={(e: any) => setNationality(e.target.value)} />
-                      </div>
-                      <Field label="Address" value={address} onChange={(e: any) => setAddress(e.target.value)} />
-                      <label className="form-group">
-                        <span className="label">Statement</span>
-                        <textarea className="textarea" rows={3} value={personalStatement} onChange={(e) => setPersonalStatement(e.target.value)} />
-                      </label>
-                    </>
-                  )}
+              <div className="auth-register-submit border-t border-border space-y-3">
+                {error && (
+                  <div className="alert alert-error">
+                    <p className="text-sm font-medium">{error}</p>
+                  </div>
+                )}
 
-                  {role === 'Reviewer' && (
-                    <>
-                      <div className="grid grid-cols-2 gap-3">
-                        <Field label="Staff #" value={staffNumber} onChange={(e: any) => setStaffNumber(e.target.value)} />
-                        <Field label="Department" value={department} onChange={(e: any) => setDepartment(e.target.value)} />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <Field label="Title" value={title} onChange={(e: any) => setTitle(e.target.value)} />
-                        <Field label="Office" value={officeLocation} onChange={(e: any) => setOfficeLocation(e.target.value)} />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <Field label="Phone" value={phoneNumber} onChange={(e: any) => setPhoneNumber(e.target.value)} />
-                        <Field label="Max reviews" type="number" value={maxActiveReviews} onChange={(e: any) => setMaxActiveReviews(e.target.value)} />
-                      </div>
-                      <label className="form-group">
-                        <span className="label">Available</span>
-                        <select className="select" value={String(isAvailable)} onChange={(e) => setIsAvailable(e.target.value === 'true')}>
-                          <option value="true">Yes</option>
-                          <option value="false">No</option>
-                        </select>
-                      </label>
-                      <label className="form-group">
-                        <span className="label">Expertise</span>
-                        <textarea className="textarea" rows={2} value={expertiseAreas} onChange={(e) => setExpertiseAreas(e.target.value)} />
-                      </label>
-                      <label className="form-group">
-                        <span className="label">Bio</span>
-                        <textarea className="textarea" rows={2} value={bio} onChange={(e) => setBio(e.target.value)} />
-                      </label>
-                    </>
-                  )}
-
-                  {role === 'Admin' && (
-                    <>
-                      <div className="grid grid-cols-2 gap-3">
-                        <Field label="Department" value={department} onChange={(e: any) => setDepartment(e.target.value)} />
-                        <Field label="Title" value={title} onChange={(e: any) => setTitle(e.target.value)} />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <Field label="Office" value={officeLocation} onChange={(e: any) => setOfficeLocation(e.target.value)} />
-                        <Field label="Phone" value={phoneNumber} onChange={(e: any) => setPhoneNumber(e.target.value)} />
-                      </div>
-                    </>
-                  )}
-                </>
-              )}
-
-              {error && (
-                <div className="alert alert-error">
-                  <p className="text-sm font-medium">{error}</p>
-                </div>
-              )}
-
-              <Button type="submit" className="w-full btn-primary" disabled={busy}>
-                {busy ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create account'}
-                {!busy && <ArrowRight size={16} />}
-              </Button>
+                <Button type="submit" className="w-full btn-primary" disabled={busy}>
+                  {busy ? 'Please wait…' : 'Create account'}
+                  {!busy && <ArrowRight size={16} />}
+                </Button>
+              </div>
             </form>
+            )}
           </div>
         </div>
 
-        <p className="text-center text-xs text-muted-foreground mt-4">
-          {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
-          <button
-            onClick={() => setMode(mode === 'login' ? 'register' : 'login')}
-            className="font-medium text-primary hover:underline">
-            {mode === 'login' ? 'Register' : 'Sign in'}
-          </button>
-        </p>
+        {mode === 'login' && (
+          <p className="text-center text-xs auth-page-footer mt-3">
+            Don&apos;t have an account?{' '}
+            <button
+              type="button"
+              onClick={() => { setMode('register'); setSuccess(null); setError(null) }}
+              className="auth-page-link">
+              Register
+            </button>
+          </p>
+        )}
+
+        {mode === 'register' && (
+          <p className="text-center text-xs auth-page-footer mt-3">
+            Already have an account?{' '}
+            <button
+              type="button"
+              onClick={() => {
+                setSuccess(null)
+                setError(null)
+                signInWithMicrosoft()
+              }}
+              className="auth-page-link">
+              Sign in with Microsoft
+            </button>
+          </p>
+        )}
       </div>
     </div>
   )

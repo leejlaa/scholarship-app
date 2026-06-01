@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -36,6 +37,35 @@ public sealed class AuthController(
         {
             return BadRequest(new { error = ex.Message });
         }
+    }
+
+    // GET /api/auth/me — Azure AD bearer; returns portal role for the signed-in user
+    [Authorize]
+    [HttpGet("me")]
+    public async Task<IActionResult> Me(CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized(new
+            {
+                error = "No portal account is linked to this Microsoft sign-in. Register first or contact an administrator."
+            });
+        }
+
+        var user = await userManager.FindByIdAsync(userId);
+        if (user is null)
+            return Unauthorized(new { error = "Portal account not found." });
+
+        var roles = await userManager.GetRolesAsync(user);
+        var role = roles.FirstOrDefault() ?? "Student";
+
+        return Ok(new AuthResponse(
+            Token: string.Empty,
+            Email: user.Email!,
+            FullName: user.FullName,
+            Role: role,
+            ExpiresAt: DateTime.UtcNow.AddHours(1)));
     }
 
     // POST /api/auth/login  — public

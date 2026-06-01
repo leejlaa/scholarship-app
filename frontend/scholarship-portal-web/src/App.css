@@ -51,16 +51,14 @@ header[class*="border-b"] h1 {
   color: var(--foreground);
 }
 
-div[class*="min-h-screen"][class*="bg-background"][class*="flex"][class*="items-center"] {
-  background: linear-gradient(135deg, oklch(0.185 0.120 262) 0%, oklch(0.240 0.130 258) 40%, oklch(0.320 0.150 255) 100%);
-}
-
-div[class*="max-w-md"] > .card {
+div[class*="max-w-md"] > .card,
+div[class*="max-w-3xl"] > .card {
   box-shadow: 0 20px 60px rgba(10,31,78,0.35), 0 6px 20px rgba(10,31,78,0.20) !important;
   border-color: oklch(0.880 0.015 255) !important;
 }
 
-div[class*="max-w-md"] > .card .card-header {
+div[class*="max-w-md"] > .card .card-header,
+div[class*="max-w-3xl"] > .card .card-header {
   border-bottom: none;
   padding-bottom: 0;
 }

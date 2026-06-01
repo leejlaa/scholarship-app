@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -46,6 +47,7 @@ public static class DependencyInjection
         services.AddScoped<IAnnouncementRepository, EfAnnouncementRepository>();
 
         // ── Services ──────────────────────────────────────────────────────
+        services.AddScoped<IClaimsTransformation, AzureAdUserClaimsTransformation>();
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IScholarshipService, ScholarshipService>();

@@ -1,7 +1,6 @@
-using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
-using Microsoft.IdentityModel.Tokens;
+using Microsoft.Identity.Web;
 using ScholarshipPortal.Infrastructure;
 using ScholarshipPortal.Infrastructure.Persistence;
 
@@ -28,25 +27,10 @@ builder.Services.AddCors(options =>
               .AllowAnyMethod());
 });
 
-// ── JWT Authentication ────────────────────────────────────────────────────
-var jwtSection = builder.Configuration.GetSection("Jwt");
-var keyBytes   = Encoding.UTF8.GetBytes(jwtSection["Key"]!);
-
+// ── Azure AD (JWT Bearer) ─────────────────────────────────────────────────
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer           = true,
-            ValidateAudience         = true,
-            ValidateLifetime         = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer              = jwtSection["Issuer"],
-            ValidAudience            = jwtSection["Audience"],
-            IssuerSigningKey         = new SymmetricSecurityKey(keyBytes)
-        };
-    });
+    .AddMicrosoftIdentityWebApi(builder.Configuration.GetSection("AzureAd"));
 
 builder.Services.AddAuthorization();
 

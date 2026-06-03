@@ -22,15 +22,16 @@ public sealed class AuthController(
     private static readonly HashSet<string> AllowedRoles =
         new(StringComparer.OrdinalIgnoreCase) { "Student", "Reviewer", "Admin" };
 
-    // POST /api/auth/register  — always creates a Student account
+    // POST /api/auth/register  — creates an account with the requested role
     [HttpPost("register")]
     public async Task<IActionResult> Register(RegisterRequest request, CancellationToken ct)
     {
+        if (!AllowedRoles.Contains(request.Role))
+            return BadRequest(new { error = $"Role must be one of: {string.Join(", ", AllowedRoles)}." });
+
         try
         {
-            // Public registration is restricted to the Student role.
-            var forced = request with { Role = "Student" };
-            var result = await authService.RegisterAsync(forced, ct);
+            var result = await authService.RegisterAsync(request, ct);
             return Ok(result);
         }
         catch (InvalidOperationException ex)

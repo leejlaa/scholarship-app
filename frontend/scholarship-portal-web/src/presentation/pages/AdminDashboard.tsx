@@ -138,9 +138,9 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 max-w-md md:grid-cols-2">
-        <StatCard label="Open" value={openScholarships} />
-        <StatCard label="Total" value={scholarships.data?.length ?? 0} />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Open scholarships" value={openScholarships} />
+        <StatCard label="Total scholarships" value={scholarships.data?.length ?? 0} />
       </div>
 
       <div className="card">
@@ -149,7 +149,7 @@ export function AdminDashboard() {
             <h2 className="card-title">Manage scholarships</h2>
             <p className="card-description">Create, edit, and assign reviewers</p>
           </div>
-          <Button className="btn btn-primary" onClick={() => setEditing('new')}>+ New</Button>
+          <Button className="btn btn-primary" onClick={() => setEditing('new')}>New scholarship</Button>
         </div>
 
         <div className="card-content space-y-4">
@@ -182,7 +182,14 @@ export function AdminDashboard() {
           )}
 
           {filteredScholarships.length === 0 && !scholarships.loading && (
-            <p className="text-sm text-muted-foreground text-center py-8">No scholarships found.</p>
+            <div className="py-12 text-center space-y-2">
+              <p className="text-sm font-medium text-foreground">
+                {normalizedQuery.length > 0 ? 'No scholarships match your search.' : 'No scholarships yet.'}
+              </p>
+              {normalizedQuery.length === 0 && (
+                <p className="text-xs text-muted-foreground">Create your first scholarship to get started</p>
+              )}
+            </div>
           )}
 
           {filteredScholarships.length > 0 && (

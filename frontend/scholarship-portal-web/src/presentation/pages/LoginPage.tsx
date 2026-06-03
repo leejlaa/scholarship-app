@@ -2,12 +2,14 @@ import { useState } from 'react'
 import { Eye, EyeOff, ArrowRight } from 'lucide-react'
 import { registerUser } from '../../application/useCases'
 import { authApi } from '../../infrastructure/api'
+import type { AuthResponse } from '../../domain/entities'
 import { signInWithMicrosoft } from '../../infrastructure/auth/azureAuth'
 import { Button } from '../components/ui/button'
 
 type Props = {
   authError?: string | null
   onDismissAuthError?: () => void
+  onLogin: (auth: AuthResponse) => void
 }
 
 const Field = ({ label, type = 'text', value, onChange, placeholder, required = false }: any) => (
@@ -24,9 +26,13 @@ const Field = ({ label, type = 'text', value, onChange, placeholder, required = 
   </label>
 )
 
-export function LoginPage({ authError, onDismissAuthError }: Props) {
+export function LoginPage({ authError, onDismissAuthError, onLogin }: Props) {
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [showPassword, setShowPassword] = useState(false)
+  const [loginEmail, setLoginEmail] = useState('')
+  const [loginPassword, setLoginPassword] = useState('')
+  const [loginBusy, setLoginBusy] = useState(false)
+  const [loginError, setLoginError] = useState<string | null>(null)
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -52,6 +58,20 @@ export function LoginPage({ authError, onDismissAuthError }: Props) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault()
+    setLoginBusy(true)
+    setLoginError(null)
+    try {
+      const result = await authApi.login({ email: loginEmail, password: loginPassword })
+      onLogin(result)
+    } catch (err) {
+      setLoginError(err instanceof Error ? err.message : 'Login failed')
+    } finally {
+      setLoginBusy(false)
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -141,23 +161,44 @@ export function LoginPage({ authError, onDismissAuthError }: Props) {
                   <div className="alert alert-error">
                     <p className="text-sm font-medium">{authError}</p>
                     {onDismissAuthError && (
-                      <button type="button" className="text-xs underline mt-1" onClick={onDismissAuthError}>
-                        Dismiss
-                      </button>
+                      <button type="button" className="text-xs underline mt-1" onClick={onDismissAuthError}>Dismiss</button>
                     )}
                   </div>
                 )}
-                <p className="text-sm text-muted-foreground">
-                  Sign in with your university Microsoft account. Use the same email you used when registering in this portal.
-                </p>
                 <Button type="button" className="w-full btn-primary" onClick={() => signInWithMicrosoft()}>
                   Sign in with Microsoft
                 </Button>
-                {error && (
-                  <div className="alert alert-error">
-                    <p className="text-sm font-medium">{error}</p>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 border-t border-border" />
+                  <span className="text-xs text-muted-foreground">or</span>
+                  <div className="flex-1 border-t border-border" />
+                </div>
+                <form onSubmit={handleLogin} className="space-y-3">
+                  <div className="form-group">
+                    <label className="label">Email</label>
+                    <input className="input" type="email" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} placeholder="you@example.com" required />
                   </div>
-                )}
+                  <div className="form-group">
+                    <label className="label">Password</label>
+                    <div className="relative">
+                      <input
+                        className="input pr-10"
+                        type={showPassword ? 'text' : 'password'}
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        placeholder="••••••••"
+                        required
+                      />
+                      <button type="button" onClick={() => setShowPassword((s) => !s)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+                  {loginError && <div className="alert alert-error"><p className="text-sm">{loginError}</p></div>}
+                  <Button type="submit" className="w-full btn-outline" disabled={loginBusy}>
+                    {loginBusy ? 'Signing in…' : 'Sign in with email'}
+                  </Button>
+                </form>
               </div>
             ) : (
             <form onSubmit={handleSubmit}>

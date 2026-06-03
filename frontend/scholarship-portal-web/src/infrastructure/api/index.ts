@@ -48,65 +48,78 @@ export function clearStoredAuth() {
   localStorage.removeItem(AUTH_STORAGE_KEY)
 }
 
-function authHeaders(): HeadersInit {
+function authHeaders(token?: string): HeadersInit {
+  const t = token ?? getStoredAuth()?.token
+  return t ? { Authorization: `Bearer ${t}` } : {}
+}
+
+// ── Token refresh ─────────────────────────────────────────────────────────
+type TokenRefresher = () => Promise<string>
+let _tokenRefresher: TokenRefresher | null = null
+
+export function registerTokenRefresher(fn: TokenRefresher) {
+  _tokenRefresher = fn
+}
+
+async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
   const auth = getStoredAuth()
-  return auth?.token ? { Authorization: `Bearer ${auth.token}` } : {}
+
+  const run = (token?: string) =>
+    fetch(path, {
+      ...options,
+      headers: { ...options.headers, ...authHeaders(token) },
+    })
+
+  let res = await run(auth?.token)
+
+  if (res.status === 401 && _tokenRefresher) {
+    try {
+      const newToken = await _tokenRefresher()
+      if (auth) setStoredAuth({ ...auth, token: newToken })
+      res = await run(newToken)
+    } catch {
+      // Refresh failed; propagate the original 401 response
+    }
+  }
+
+  return res
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────
 async function apiGet<T>(path: string): Promise<T> {
-  const res = await fetch(path, {
-    headers: {
-      ...authHeaders(),
-    },
-  })
-
+  const res = await apiFetch(path)
   if (!res.ok) throw new Error(`API ${path} returned ${res.status}`)
   return res.json() as Promise<T>
 }
 
 async function apiPost<TResponse, TRequest>(path: string, body: TRequest): Promise<TResponse> {
-  const res = await fetch(path, {
+  const res = await apiFetch(path, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeaders(),
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-
   if (!res.ok) {
     const text = await res.text()
     throw new Error(text || `API ${path} returned ${res.status}`)
   }
-
   return res.json() as Promise<TResponse>
 }
 
 async function apiPut<TResponse, TRequest>(path: string, body: TRequest): Promise<TResponse> {
-  const res = await fetch(path, {
+  const res = await apiFetch(path, {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeaders(),
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
-
   if (!res.ok) {
     const text = await res.text()
     throw new Error(text || `API ${path} returned ${res.status}`)
   }
-
   return res.json() as Promise<TResponse>
 }
 
 async function apiDelete(path: string): Promise<void> {
-  const res = await fetch(path, {
-    method: 'DELETE',
-    headers: { ...authHeaders() },
-  })
-
+  const res = await apiFetch(path, { method: 'DELETE' })
   if (!res.ok) {
     const text = await res.text()
     throw new Error(text || `API ${path} returned ${res.status}`)
@@ -114,19 +127,11 @@ async function apiDelete(path: string): Promise<void> {
 }
 
 async function apiPostForm<TResponse>(path: string, formData: FormData): Promise<TResponse> {
-  const res = await fetch(path, {
-    method: 'POST',
-    headers: {
-      ...authHeaders(),
-    },
-    body: formData,
-  })
-
+  const res = await apiFetch(path, { method: 'POST', body: formData })
   if (!res.ok) {
     const text = await res.text()
     throw new Error(text || `API ${path} returned ${res.status}`)
   }
-
   return res.json() as Promise<TResponse>
 }
 
@@ -153,7 +158,7 @@ export function getDocumentDownloadUrl(storagePath: string, inline = false) {
 
 export async function openDocumentInNewTab(storagePath: string) {
   const url = getDocumentDownloadUrl(storagePath, true)
-  const res = await fetch(url, { headers: { ...authHeaders() } })
+  const res = await apiFetch(url)
   if (!res.ok) throw new Error(`Document fetch failed: ${res.status}`)
   const contentType = res.headers.get('content-type') ?? 'application/octet-stream'
   const blob = await res.blob()

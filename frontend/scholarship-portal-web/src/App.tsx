@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import './App.css'
 import type { AuthResponse } from './domain/entities'
-import { clearStoredAuth, getStoredAuth, setStoredAuth } from './infrastructure/api'
-import { completeAzureSignIn, signOutFromMicrosoft } from './infrastructure/auth/azureAuth'
+import { clearStoredAuth, getStoredAuth, registerTokenRefresher, setStoredAuth } from './infrastructure/api'
+import { acquireApiAccessToken, completeAzureSignIn, signOutFromMicrosoft } from './infrastructure/auth/azureAuth'
 import { ensureMsalInitialized, handleMsalRedirectOnce } from './infrastructure/auth/msalInstance'
 import {
   ProtectedRoute,
@@ -45,6 +45,7 @@ export default function App() {
     void (async () => {
       try {
         await ensureMsalInitialized()
+        registerTokenRefresher(() => acquireApiAccessToken())
         const redirectResult = await handleMsalRedirectOnce()
         if (cancelled) return
 
@@ -91,7 +92,7 @@ export default function App() {
           auth ? (
             <Navigate to={homePath} replace />
           ) : (
-            <LoginPage authError={authError} onDismissAuthError={() => setAuthError(null)} />
+            <LoginPage authError={authError} onDismissAuthError={() => setAuthError(null)} onLogin={handleAuthenticated} />
           )
         }
       />

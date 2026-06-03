@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { CheckCircle2, Clock, FileText } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useScholarships, useApplications } from '../../application/hooks'
 import { StatusBadge, formatDate, formatMoney, StatCard } from '../components/shared'
@@ -168,7 +169,12 @@ export function StudentDashboard() {
                     <tr key={item.id}>
                       <td className="font-medium">{item.scholarshipTitle}</td>
                       <td><StatusBadge label={item.status} /></td>
-                      <td className="text-sm">{item.documentsComplete ? '✓ Complete' : '○ Missing'}</td>
+                      <td>
+                        {item.documentsComplete
+                          ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5"><CheckCircle2 size={11} /> Complete</span>
+                          : <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5"><Clock size={11} /> Pending</span>
+                        }
+                      </td>
                       <td className="text-sm text-muted-foreground">{item.nextStep}</td>
                       <td>
                         <div className="flex gap-1.5 justify-end">
@@ -184,9 +190,13 @@ export function StudentDashboard() {
           )}
 
           {(applications.data ?? []).length === 0 && !applications.loading && (
-            <div className="py-10 text-center space-y-3">
-              <p className="text-sm text-muted-foreground">No applications yet.</p>
-              <Button className="btn btn-primary" onClick={() => navigate('/student/apply')}>Browse scholarships</Button>
+            <div className="py-12 text-center space-y-3">
+              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto">
+                <FileText size={20} className="text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium text-foreground">No applications yet</p>
+              <p className="text-xs text-muted-foreground">Apply for a scholarship to get started</p>
+              <Button className="btn btn-primary btn-sm" onClick={() => navigate('/student/apply')}>Browse scholarships</Button>
             </div>
           )}
         </div>

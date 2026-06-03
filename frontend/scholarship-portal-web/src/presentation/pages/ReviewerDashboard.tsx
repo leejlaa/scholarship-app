@@ -184,26 +184,36 @@ export function ReviewerDashboard() {
 
       {/* Unreviewed submissions */}
       {unreviewedSubmissions.length > 0 && (
-        <div className="rounded-xl border bg-card p-6 flex flex-col gap-4">
-          <h2 className="text-lg font-semibold text-foreground">Unreviewed submissions</h2>
-          <div className="grid grid-cols-2 gap-4">
-            {unreviewedSubmissions.map((submission) => (
-              <article key={submission.id} className="rounded-xl border bg-background p-4 flex flex-col gap-3">
-                <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-semibold text-foreground">{submission.studentName}</h3>
-                  <StatusBadge label={resolveCurrentApplicationStatus(submission.id)} />
-                </div>
-                <p className="text-sm font-medium text-muted-foreground">{submission.scholarshipTitle}</p>
-                <Button size="sm" onClick={() => openCreateForm(submission.id)}>Review submission</Button>
-              </article>
-            ))}
+        <div className="card">
+          <div className="card-header">
+            <h2 className="card-title">Unreviewed submissions</h2>
+            <span className="text-sm text-muted-foreground">{unreviewedSubmissions.length} pending</span>
+          </div>
+          <div className="card-content">
+            <div className="grid grid-cols-2 gap-4">
+              {unreviewedSubmissions.map((submission) => (
+                <article key={submission.id} className="card">
+                  <div className="card-content flex flex-col gap-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="font-semibold text-foreground">{submission.studentName}</h3>
+                      <StatusBadge label={resolveCurrentApplicationStatus(submission.id)} />
+                    </div>
+                    <p className="text-sm font-medium text-muted-foreground">{submission.scholarshipTitle}</p>
+                    <Button size="sm" onClick={() => openCreateForm(submission.id)}>Review submission</Button>
+                  </div>
+                </article>
+              ))}
+            </div>
           </div>
         </div>
       )}
 
       {/* Review queue */}
-      <div className="rounded-xl border bg-card p-6 flex flex-col gap-4">
-        <h2 className="text-lg font-semibold text-foreground">Reviewer queue</h2>
+      <div className="card">
+        <div className="card-header">
+          <h2 className="card-title">Reviewer queue</h2>
+        </div>
+        <div className="card-content flex flex-col gap-4">
 
         {creatingForApplicationId !== null && (
           <div ref={reviewFormRef} className="rounded-lg border bg-muted/30 p-5 animate-slide-in-down">
@@ -324,7 +334,8 @@ export function ReviewerDashboard() {
 
         <div className="grid grid-cols-2 gap-4">
           {filteredQueue.map((item) => (
-            <article key={item.id} className="rounded-xl border bg-background p-5 flex flex-col gap-3 hover:shadow-md transition-shadow">
+            <article key={item.id} className="card">
+              <div className="card-content flex flex-col gap-3">
               <div className="flex items-start justify-between gap-2">
                 <h3 className="font-semibold text-foreground">{item.applicantName}</h3>
                 <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
@@ -368,14 +379,16 @@ export function ReviewerDashboard() {
                 {statusFeedbackAppId === item.applicationId && statusErr && <p className="text-xs text-destructive">{statusErr}</p>}
               </div>
 
+              </div>
               {item.isMine && (
-                <div className="flex gap-2 pt-2 border-t border-border">
+                <div className="card-footer">
                   <Button variant="outline" size="sm" onClick={() => { setEditing(item); setDeleteId(null); void loadDocumentsForApp(item.applicationId); }}>Edit</Button>
                   <Button variant="destructive" size="sm" onClick={() => { setDeleteId(item.id); setEditing(null) }}>Delete</Button>
                 </div>
               )}
             </article>
           ))}
+        </div>
         </div>
       </div>
     </div>

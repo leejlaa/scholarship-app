@@ -1,10 +1,8 @@
 import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from 'react'
-import { Bell, ClipboardCheck, Compass, LayoutDashboard, LogOut, Search, Upload, X } from 'lucide-react'
+import { Bell, ClipboardCheck, FilePlus, LayoutDashboard, LogOut, Search, User, X } from 'lucide-react'
 import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { usePortalOverview } from '../../application/hooks'
 import type { AuthResponse, PortalNotification } from '../../domain/entities'
 import { cn } from '../../lib/utils'
-import { StatCard } from './shared'
 import { Button } from './ui/button'
 import { getNotifications } from '../../infrastructure/api'
 
@@ -23,18 +21,19 @@ const ROLE_SUMMARY: Record<Role, { title: string }> = {
   admin:    { title: 'Admin control center' },
 }
 
-const ROLE_SECTIONS: Record<Role, Array<{ label: string; to: string; icon: typeof Compass }>> = {
+const ROLE_SECTIONS: Record<Role, Array<{ label: string; to: string; icon: typeof LayoutDashboard }>> = {
   student: [
-    { label: 'Overview',        to: '/student',         icon: LayoutDashboard },
-    { label: 'Profile details', to: '/student/profile', icon: Upload },
+    { label: 'Overview', to: '/student',         icon: LayoutDashboard },
+    { label: 'Apply',    to: '/student/apply',   icon: FilePlus },
+    { label: 'Profile',  to: '/student/profile', icon: User },
   ],
   reviewer: [
-    { label: 'Overview',        to: '/reviewer',         icon: ClipboardCheck },
-    { label: 'Profile details', to: '/reviewer/profile', icon: Upload },
+    { label: 'Overview', to: '/reviewer',         icon: ClipboardCheck },
+    { label: 'Profile',  to: '/reviewer/profile', icon: User },
   ],
   admin: [
-    { label: 'Overview',        to: '/admin',         icon: LayoutDashboard },
-    { label: 'Profile details', to: '/admin/profile', icon: Upload },
+    { label: 'Overview', to: '/admin',         icon: LayoutDashboard },
+    { label: 'Profile',  to: '/admin/profile', icon: User },
   ],
 }
 
@@ -113,7 +112,6 @@ interface PortalLayoutProps {
 }
 
 export function PortalLayout({ auth, activeRole, onLogout, pageTitle = 'Dashboard', children }: PortalLayoutProps) {
-  const overview  = usePortalOverview(true)
   const navigate  = useNavigate()
   const [searchQuery, setSearchQuery]     = useState('')
   const seenKey = `notif-seen-${auth.email}`
@@ -333,12 +331,6 @@ export function PortalLayout({ auth, activeRole, onLogout, pageTitle = 'Dashboar
           </header>
 
           <div className="flex-1 px-4 sm:px-6 lg:px-8 pb-10">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 pt-6">
-              <StatCard label="Students"          value={overview.data?.totalStudents ?? '—'} />
-              <StatCard label="Open scholarships" value={overview.data?.totalOpenScholarships ?? '—'} />
-              <StatCard label="Pending reviews"   value={overview.data?.pendingReviews ?? '—'} />
-              <StatCard label="Published results" value={overview.data?.publishedResults ?? '—'} />
-            </div>
             <main className="py-6">{children}</main>
           </div>
         </div>

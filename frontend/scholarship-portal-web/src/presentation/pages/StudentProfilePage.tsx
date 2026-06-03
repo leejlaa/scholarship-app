@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { CheckCircle2, Clock } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useApplications } from '../../application/hooks'
 import { StatusBadge } from '../components/shared'
@@ -168,7 +169,12 @@ export function StudentProfilePage() {
                     <tr key={a.id}>
                       <td className="font-medium">{a.scholarshipTitle}</td>
                       <td><StatusBadge label={a.status} /></td>
-                      <td className="text-sm">{a.documentsComplete ? '✓ Complete' : '○ Missing'}</td>
+                      <td>
+                        {a.documentsComplete
+                          ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5"><CheckCircle2 size={11} /> Complete</span>
+                          : <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5"><Clock size={11} /> Pending</span>
+                        }
+                      </td>
                       <td className="text-sm text-muted-foreground">{a.nextStep}</td>
                       <td>
                         <Button className="btn btn-ghost btn-sm" onClick={() => navigate(`/student/application/${a.id}/documents`)}>
